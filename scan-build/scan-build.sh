@@ -1,7 +1,12 @@
 #!/bin/bash
 set -o pipefail
 
-SREPO=${1:-srepo}
+REPO=$1
+LLVM=VERSION=${2:-15}
+TIMEOUT=${3:-30}
+
+SREPO=$(echo $REPO | tr '/' .)
+
 export OUTPUT=/work/$SREPO
 
 find_autoconf_builddir() {
@@ -150,7 +155,7 @@ scan_build_autoconf() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/scan-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --analyze-headers --keep-empty --force-analyze-debug-code --html-title ${{ matrix.repo }} -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --analyze-headers --keep-empty --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -199,7 +204,7 @@ scan_build_cmake() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/analyze-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --analyze-headers --keep-empty --force-analyze-debug-code --html-title ${{ matrix.repo }} -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --analyze-headers --keep-empty --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -245,7 +250,7 @@ scan_build_meson() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/analyze-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --analyze-headers --keep-empty --force-analyze-debug-code --html-title ${{ matrix.repo }} -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --analyze-headers --keep-empty --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -281,7 +286,7 @@ generate_json() {
           now=$(date)
           functions=$(cat ${OUTPUT}/cognitive-complexity.log 2>/dev/null | wc -l)
 
-          JSON="{ \"repo\": \"${{ matrix.repo }}\", \"scan-date\": \"$now\", \"functions\": $functions, \"bugs\": ["
+          JSON="{ \"repo\": \"$REPO\", \"scan-date\": \"$now\", \"functions\": $functions, \"bugs\": ["
 
           for f in $(find . -type f -name '*.html' | grep report); do
             bugfound=1

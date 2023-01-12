@@ -6,6 +6,7 @@ ENV LLVM_VERSION 15
  
 COPY scan-build/llvm.sh /tmp/llvm.sh
 COPY scan-build/scan-build.sh /scan-build.sh
+COPY scan-build/.gitconfig /root
 
 RUN apt-get update && apt-get install -y \
     build-essential pkg-config coreutils binutils \

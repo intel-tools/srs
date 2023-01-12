@@ -15,7 +15,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: scan-build.tar
-          key: scan-build-2
+          key: scan-build-3
 
       - name: checkout repo
         if: steps.cache.outputs.cache-hit != 'true'
