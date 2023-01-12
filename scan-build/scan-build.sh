@@ -122,6 +122,8 @@ scan_build_autoconf() {
 
           while read -r build; do
 
+            echo "Autoconf $build"
+
             dir=$(echo $build | awk '{ print $1 }')
             script=$(echo $build | awk '{ print $2 }')
 
@@ -192,6 +194,8 @@ scan_build_cmake() {
 
           while read -r build; do
 
+            echo "CMake $build"
+
             dir=$(echo $build | awk '{ print $1 }')
 
             cd $dir
@@ -244,6 +248,8 @@ scan_build_meson() {
     fi
 
           while read -r build; do
+
+            echo "Meson $build"
 
             dir=$(echo $build | awk '{ print $1 }')
 
