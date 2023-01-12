@@ -1,0 +1,95 @@
+on:
+  workflow_call:
+    inputs:
+      input:
+        description: 'json array of inputs'
+        required: true
+        default: ''
+        type: string
+jobs:
+  prepare-docker:
+    runs-on: ubuntu-latest
+    steps:
+      - name: llvm.sh
+        run: |
+          echo -n 'debian=$(grep VERSION_CODENAME /etc/os-release | awk -F"=" ' > llvm.sh
+          echo -n "'" >> llvm.sh
+          echo -n '{ print $2 }' >> llvm.sh
+          echo "')" >> llvm.sh
+          echo 'wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add -' >> llvm.sh
+          echo 'add-apt-repository -y "deb http://apt.llvm.org/${debian}/ llvm-toolchain-${debian}-${LLVM_VERSION} main"' >> llvm.sh
+          echo 'apt-get update -y' >> llvm.sh
+          echo 'apt-get install -y clang-${LLVM_VERSION} clang-tools-${LLVM_VERSION} clang-tidy-${LLVM_VERSION}' >> llvm.sh
+
+      - name: dockerfile
+        env:
+          LLVM_VERSION: 15
+          BASE: "debian:testing-slim"
+        run: |
+          echo "FROM $BASE" > Dockerfile
+          echo "ENV DEBIAN_FRONTEND noninteractive" >> Dockerfile
+          echo "ENV USER root" >> Dockerfile
+          echo "ENV LLVM_VERSION $LLVM_VERSION" >> Dockerfile
+          echo "COPY llvm.sh /tmp/llvm.sh" >> Dockerfile
+          echo "RUN apt-get update && apt-get install -y \\" >> Dockerfile
+          echo "build-essential pkg-config coreutils binutils \\" >> Dockerfile
+          echo "autoconf autoconf-archive automake autopoint \\" >> Dockerfile
+          echo "meson ninja-build nasm yasm \\" >> Dockerfile
+          echo "cmake cmake-data cmake-extras \\" >> Dockerfile
+          echo "gettext bison flex libtool \\" >> Dockerfile
+          echo "wget curl libz3-dev time jq tar \\" >> Dockerfile
+          echo "python3 libpython3-dev libboost-all-dev \\" >> Dockerfile
+          echo "gnupg lsb-release software-properties-common git && \\" >> Dockerfile
+          echo "chmod +x /tmp/llvm.sh && /tmp/llvm.sh" >> Dockerfile
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHPAT }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build production image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.actor }}/${{ github.repository }}.debian:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+
+  split:
+    uses: ./.github/workflows/work2matrix.yml
+    with:
+      input: ${{ inputs.input }}
+
+  m1:
+    needs: [prepare-docker, split]
+    if: needs.split.outputs.matrix1 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix1)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/scan-build-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+      autoconf: ${{ matrix.autoconf }}
+      meson: ${{ matrix.meson }}
+      cmake: ${{ matrix.cmake }}
+
+  m2:
+    needs: [prepare-docker, split]
+    if: needs.split.outputs.matrix2 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix2)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/scan-build-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+      autoconf: ${{ matrix.autoconf }}
+      meson: ${{ matrix.meson }}
+      cmake: ${{ matrix.cmake }}

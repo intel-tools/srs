@@ -1,0 +1,253 @@
+name: Perform various scans on the results of the query
+on:
+  repository_dispatch:
+    types: [query-command]
+  pull_request:
+    branches: [ main ]
+jobs:
+  query-repositories:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GHPAT }}
+    outputs:
+      json: ${{ steps.search.outputs.json }}
+    steps:
+      - name: install dependencies
+        run: |
+          type -p curl >/dev/null || sudo apt install curl -y
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt-get update \
+          && sudo apt-get install gh -y
+
+      - name: set search term
+        id: set
+        run: |
+          search=${{ github.event.client_payload.slash_command.args.named.search }}
+          [[ -z $search ]] && search="language:c language:c++ stars:>=10000"
+          echo search="$search" >> $GITHUB_OUTPUT
+
+      - name: execute search
+        id: search
+        env:
+          #SEARCH: "language:c language:c++ org:intel stars:>=100"
+          #SEARCH: "language:c language:c++ stars:>=10000"
+          SEARCH: ${{ steps.set.outputs.search }}
+        run: |
+          execute_query() {
+            local counter=0
+            local cursor=""
+            local retry=$1
+            local retry_counter=$retry
+
+            local query='
+            query($search: String!, $endCursor: String) {
+              search(
+                type: REPOSITORY,
+                query: $search,
+                first: 100
+                after: $endCursor
+              )
+              {
+                repositoryCount
+                repos: edges {
+                  repo: node {
+                    ... on Repository {
+                      nameWithOwner
+                      languages(first: 100) { nodes { name } }
+                    }
+                  }
+                }
+              pageInfo { hasNextPage endCursor }
+              }
+            rateLimit { remaining resetAt }
+            }
+            '
+
+            while : ; do
+
+              echo "Running iteration $counter of query $SEARCH"
+
+              if [ -z ${cursor} ]; then
+                gh api graphql -F search="$SEARCH" -f query="$query" > data.${counter}.json
+              else
+                gh api graphql -F search="$SEARCH" -F endCursor="${cursor}" -f query="$query" > data.${counter}.json
+              fi
+
+              r=$?
+
+              if [ $r -ne 0 ] && [ $retry_counter -gt 0 ]; then
+                sleep 5
+                (( retry_counter-- )) || :
+
+                # TODO: check rate limiting and sleep till resetAt if needed and then retry
+
+                continue
+              fi
+
+              t=$(jq '.data.search.pageInfo | "\(.hasNextPage) \(.endCursor)"' data.${counter}.json | tr -d '"')
+              next=$(echo -n $t | awk '{ print $1 }')
+              cursor=$(echo -n $t | awk '{ print $2 }')
+
+              if [ "${next}" == "false" ]; then
+                break
+              fi
+
+              retry_counter=$retry
+              (( counter++ )) || :
+
+            done
+
+            # merge jsons
+            find . -type f -name 'data.*.json' -exec jq -cn '{ repos: [ inputs.data.search.repos ] | add }' {} + > repos.json
+          }
+
+          execute_query 5
+          count=$(jq '.data.search.repositoryCount' data.0.json)
+
+          echo "## Repositories matching search query '${SEARCH}': $count" >> $GITHUB_STEP_SUMMARY
+          JSON=$(jq -c '.' repos.json)
+          echo json=$JSON >> $GITHUB_OUTPUT
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 1
+          name: repo-artifacts
+          path: repos.json
+
+  scan-build:
+    needs: [query-repositories]
+    uses: ./.github/workflows/scan-build.yml
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
+
+  aggregate-results:
+    needs: [scan-build, ossf-scorecard]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+
+      - name: decompress
+        run: |
+          for f in $(find . -type f -name '*.tar.gz'); do
+            tar -xvf $f
+          done
+
+      - name: Calculate total bugs found
+        run: |
+          bugs=$(find . -type f -name 'result.json' -type f -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
+
+          echo "### Total number of bugs found: ${bugs}" >> $GITHUB_STEP_SUMMARY
+
+          JSON="{\"bugs\": $bugs, "
+
+          for f in $(find . -type f -name 'result.json'); do
+            [[ $(jq '.bugs | length' $f) -eq 0 ]] && jq '.repo' $f | tr -d '"' >> clean-repos.txt
+            jq '.types[] | "\(.type),\(.count)"' $f | tr -d '"' >> aggregate-bug-types.txt
+            jq '.categories[] | "\(.category),\(.count)"' $f | tr -d '"' >> aggregate-bug-categories.txt
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "***" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          cat aggregate-bug-categories.txt | awk -F',' '{ print $1 }' | sort -u > bug-categories.txt
+          cat aggregate-bug-types.txt | awk -F',' '{ print $1 }' | sort -u > bug-types.txt
+
+          echo "#### Bug categories" >> $GITHUB_STEP_SUMMARY
+
+          JSON+="\"categories\": ["
+          while read -r line; do
+            c=$(grep "$line" aggregate-bug-categories.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+            echo "##### $line: $c" >> $GITHUB_STEP_SUMMARY
+            JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
+
+            for r in $(grep -rl "$line" */result.json | xargs jq '.repo'); do
+              JSON+="{\"repo\": $r},"
+              echo $r | tr -d '"' >> $GITHUB_STEP_SUMMARY
+            done
+            JSON="${JSON%?}" # Remove last ","
+            JSON+="]},"
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "***" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+          done < bug-categories.txt
+          JSON="${JSON%?}" # Remove last ","
+          JSON+="], "
+
+          echo "#### Bug types" >> $GITHUB_STEP_SUMMARY
+
+          JSON+="\"types\": ["
+          while read -r line; do
+            c=$(grep "$line" aggregate-bug-types.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+            echo "##### $line: $c" >> $GITHUB_STEP_SUMMARY
+            JSON+="{\"type\": \"$line\", \"count\": $c, \"repo\": ["
+
+            for r in $(grep -rl "$line" */result.json | xargs jq '.repo'); do
+              JSON+="{\"repo\": $r},"
+              echo $r | tr -d '"' >> $GITHUB_STEP_SUMMARY
+            done
+            JSON="${JSON%?}" # Remove last ","
+            JSON+="]},"
+
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "***" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+
+          done < bug-types.txt
+          JSON="${JSON%?}" # Remove last ","
+          JSON+="]}"
+
+          echo $JSON > aggregate-results.json
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "***" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          clean_repos=$(cat clean-repos.txt | wc -l)
+          echo "### Repositories with no bugs: ${clean_repos}" >> $GITHUB_STEP_SUMMARY
+          cat clean-repos.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: compare bugs vs score
+        run: |
+          echo "### Breakdown" >> $GITHUB_STEP_SUMMARY
+
+          echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> $GITHUB_STEP_SUMMARY
+          echo "| ----------- | ----------- | --------- | ---------------------- |" >> $GITHUB_STEP_SUMMARY
+
+          for f in $(find . -type f -name 'result.json'); do
+            repo=$(jq '.repo' $f | tr -d '"')
+            srepo=$(echo $repo | tr '/' .)
+            functions=$(jq '.functions' $f)
+
+            echo "$repo $srepo $functions"
+
+            complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $f | wc -l)
+            bugs=$(jq '.bugs | length' $f)
+            bugs=$(( bugs - complex_functions ))
+
+            score=$(jq '.score' $srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
+
+            echo "l: $repo, $srepo, $score, $bugs, $complex_functions / $functions"
+            echo "| $repo | $score | $bugs | $complex_functions / $functions |" >> $GITHUB_STEP_SUMMARY
+            echo "$repo,$score,$bugs,$functions,$complex_functions" >> score_vs_bugs.csv
+          done
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 1
+          name: aggregate-results
+          path: aggregate-results.json
+
+      - name: score vs bugs csv
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 1
+          name: score-v-bugs
+          path: score_vs_bugs.csv
