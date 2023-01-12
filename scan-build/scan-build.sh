@@ -181,10 +181,6 @@ scan_build_autoconf() {
             touch $dir/scan-build-done
 
           done < /work/build_autoconf
-
-          if [ ! -d $OUTPUT/scan-build-result ]; then
-            exit 10
-          fi
 }
 
 scan_build_cmake() {
@@ -236,10 +232,6 @@ scan_build_cmake() {
             touch $dir/scan-build-done
 
           done < /work/build_cmake
-
-          if [ ! -d $OUTPUT/scan-build-result ]; then
-            exit 10
-          fi
 }
 
 scan_build_meson() {
@@ -288,16 +280,16 @@ scan_build_meson() {
             touch $dir/scan-build-done
 
           done < /work/build_meson
-
-          if [ ! -d $OUTPUT/scan-build-result ]; then
-            exit 10
-          fi
 }
 
 scan_build() {
     scan_build_autoconf
     scan_build_cmake
     scan_build_meson
+
+    if [ ! -d $OUTPUT/scan-build-result ]; then
+        exit 10
+    fi
 }
 
 parse_info() {
