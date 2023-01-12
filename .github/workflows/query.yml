@@ -34,6 +34,7 @@ jobs:
           #SEARCH: "language:c language:c++ org:intel stars:>=100"
           #SEARCH: "language:c language:c++ stars:>=10000"
           SEARCH: ${{ steps.set.outputs.search }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           execute_query() {
             local counter=0
