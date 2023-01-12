@@ -66,7 +66,7 @@ jobs:
       - name: scan-build
         env:
           SREPO: ${{ steps.vars.outputs.SREPO }}
-        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build /work/scan-build/scan-build.sh $SREPO
+        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build $SREPO
 
       - name: Adding scan summary to Github markdown
         if: ${{ always() }}
