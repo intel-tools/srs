@@ -1,12 +1,10 @@
 #!/bin/bash
 set -o pipefail
 
-REPO=$1
-LLVM=VERSION=${2:-"15"}
-TIMEOUT=${3:-"30m"}
-
-SREPO=$(echo $REPO | tr '/' .)
-
+export REPO=$1
+export LLVM_VERSION=${2:-"15"}
+export TIMEOUT=${3:-"30m"}
+export SREPO=$(echo $REPO | tr '/' .)
 export OUTPUT=/work/$SREPO
 
 find_autoconf_builddir() {
