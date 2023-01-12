@@ -32,7 +32,7 @@ jobs:
       matrix10: ${{ steps.matrix.outputs.matrix10 }}
     steps:
       - name: save input
-        run: echo -n ${{ inputs.input }} > input.json
+        run: echo -n '${{ inputs.input }}' > input.json
 
       - name: create matrix
         id: matrix
