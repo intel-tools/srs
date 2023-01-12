@@ -20,8 +20,8 @@ find_autoconf_builddir() {
         ODIR=$PWD
         cd $d
         s=$(find . -iname "$f" -type f | head -n1)
-        echo "Found $s in $PWD/$d"
-        echo "$PWD/$d $s" >> /work/build_autoconf
+        echo "Found $s in $PWD"
+        echo "$PWD $s" >> /work/build_autoconf
         cd $ODIR
       fi
     done
