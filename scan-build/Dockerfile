@@ -19,4 +19,4 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get clean
 RUN chmod +x /scan-build.sh
 
-ENTRYPOINT /scan-build.sh
+ENTRYPOINT ["/scan-build.sh"]

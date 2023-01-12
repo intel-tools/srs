@@ -380,6 +380,8 @@ generate_json() {
 
 ######
 
+echo "Received input: $REPO"
+
 mkdir -p $OUTPUT
 
 cd /work/repo
