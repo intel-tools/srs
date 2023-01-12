@@ -11,11 +11,12 @@ export OUTPUT=/work/$SREPO
 
 find_autoconf_builddir() {
   local search="configure autogen.sh bootstrap.sh bootstrap boot buildconf configure.ac"
+  touch /work/build_autoconf
 
   for f in $search; do
     local dir=$(find . -iname "$f" -type f -printf '%h\n')
     for d in $dir; do
-      if [ -z $(grep "$PWD/$d" /work/build_autoconf) ]; then
+      if [ $(grep "$PWD/$d" /work/build_autoconf | wc -l) -eq 0 ]; then
         s=$(find $dir -iname "$f" -type f | head -n1)
         echo "Found $s in $PWD/$d"
         echo "$PWD/$d $s" >> /work/build_autoconf
@@ -26,6 +27,8 @@ find_autoconf_builddir() {
 
 find_cmake_builddir() {
   local search="CMakeLists.txt"
+  touch /work/build_cmake
+
   for f in $search; do
     local dir=$(find . -iname "$f" -type f -printf '%h\n')
     for d in $dir; do
@@ -41,6 +44,8 @@ find_cmake_builddir() {
 
 find_meson_builddir() {
   local search="meson.build"
+  touch /work/build_meson
+
   for f in $search; do
     local dir=$(find . -iname "$f" -type f -printf '%h\n')
     for d in $dir; do
