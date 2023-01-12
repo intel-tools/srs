@@ -3,7 +3,7 @@ set -o pipefail
 
 REPO=$1
 LLVM=VERSION=${2:-15}
-TIMEOUT=${3:-30}
+TIMEOUT=${3:-"30m"}
 
 SREPO=$(echo $REPO | tr '/' .)
 
