@@ -108,6 +108,10 @@ get_submodules() {
 }
 
 scan_build_autoconf() {
+    if [ ! -f /work/build_autoconf ]; then
+        exit 0
+    fi
+
           while read -r build; do
 
             dir=$(echo $build | awk '{ print $1 }')
@@ -174,6 +178,10 @@ scan_build_autoconf() {
 }
 
 scan_build_cmake() {
+    if [ ! -f /work/build_cmake ]; then
+        exit 0
+    fi
+
           while read -r build; do
 
             dir=$(echo $build | awk '{ print $1 }')
@@ -223,6 +231,10 @@ scan_build_cmake() {
 }
 
 scan_build_meson() {
+    if [ ! -f /work/build_meson ]; then
+        exit 0
+    fi
+
           while read -r build; do
 
             dir=$(echo $build | awk '{ print $1 }')

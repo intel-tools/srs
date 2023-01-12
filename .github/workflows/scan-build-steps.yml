@@ -58,7 +58,7 @@ jobs:
         id: get-docker
         with:
           path: scan-build.tar
-          key: scan-build-3
+          key: scan-build-4
 
       - name: Load image
         run: docker load -i scan-build.tar
