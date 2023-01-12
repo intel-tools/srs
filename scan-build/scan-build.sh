@@ -2,7 +2,7 @@
 set -o pipefail
 
 REPO=$1
-LLVM=VERSION=${2:-15}
+LLVM=VERSION=${2:-"15"}
 TIMEOUT=${3:-"30m"}
 
 SREPO=$(echo $REPO | tr '/' .)
@@ -116,10 +116,6 @@ get_submodules() {
 }
 
 scan_build_autoconf() {
-    if [ ! -f /work/build_autoconf ]; then
-        exit 0
-    fi
-
           while read -r build; do
 
             echo "Autoconf $build"
@@ -184,10 +180,6 @@ scan_build_autoconf() {
 }
 
 scan_build_cmake() {
-    if [ ! -f /work/build_cmake ]; then
-        exit 0
-    fi
-
           while read -r build; do
 
             echo "CMake $build"
@@ -235,10 +227,6 @@ scan_build_cmake() {
 }
 
 scan_build_meson() {
-    if [ ! -f /work/build_meson ]; then
-        exit 0
-    fi
-
           while read -r build; do
 
             echo "Meson $build"
