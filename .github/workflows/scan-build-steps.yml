@@ -26,6 +26,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      GH_TOKEN: ${{ github.token }}
       LLVM_VERSION: "15"
       TIMEOUT: "10m"
 
@@ -49,7 +50,6 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GHPAT }}
           repository: ${{ inputs.repo }}
           path: repo
 

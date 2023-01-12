@@ -9,6 +9,10 @@ on:
 jobs:
   ossf-scorecard:
     runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
     steps:
       - name: generate save directory name
         shell: bash
@@ -21,7 +25,6 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v3
         with:
-          token: ${{ secrets.GHPAT }}
           repository: ${{ inputs.repo }}
 
       - name: run OSFF scorecard
