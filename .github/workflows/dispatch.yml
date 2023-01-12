@@ -12,3 +12,4 @@ jobs:
           token: ${{ secrets.GHPAT }}
           commands: |
             query
+            scan-build

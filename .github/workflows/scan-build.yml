@@ -1,4 +1,6 @@
 on:
+  repository_dispatch:
+    types: [scan-build-command]
   workflow_call:
     inputs:
       input:
@@ -36,10 +38,29 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  get_input:
+    runs-on: ubuntu-latest
+    outputs:
+      input: ${{ steps.json.outputs.json }}
+    steps:
+      - name: Get input form slash-command
+        if: github.event.client_payload.slash_command.args.named.repo != null
+        run: echo "[{\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"}] > json
+
+      - name: Get input from query
+        if: inputs.input != ''
+        run: echo '${{ inputs.input }}' > json
+
+      - id: json
+        run: |
+          JSON=$(cat json)
+          echo json=$JSON >> $GITHUB_OUTPUT
+
   split:
+    needs: get_input
     uses: ./.github/workflows/work2matrix.yml
     with:
-      input: ${{ inputs.input }}
+      input: ${{ steps.get_input.outputs.input }}
 
   m1:
     needs: [prepare-docker, split]
