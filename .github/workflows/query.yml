@@ -160,14 +160,15 @@ jobs:
     with:
       input: ${{ needs.query-repositories.outputs.json }}
 
-  ossf-scorecard:
-    needs: query-repositories
-    uses: ./.github/workflows/ossf-scorecard.yml
-    with:
-      input: ${{ needs.query-repositories.outputs.json }}
+  #ossf-scorecard:
+  #  needs: query-repositories
+  #  uses: ./.github/workflows/ossf-scorecard.yml
+  #  with:
+  #    input: ${{ needs.query-repositories.outputs.json }}
 
   aggregate-results:
-    needs: [scan-build, ossf-scorecard]
+    #needs: [scan-build, ossf-scorecard]
+    needs: [scan-build]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
