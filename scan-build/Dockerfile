@@ -18,3 +18,5 @@ RUN apt-get update && apt-get install -y \
     clang-15 clang-tools-15 clang-tidy-15
 RUN apt-get clean
 RUN chmod +x /scan-build.sh
+
+ENTRYPOINT /scan-build.sh
