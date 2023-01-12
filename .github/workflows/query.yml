@@ -143,6 +143,10 @@ jobs:
           echo json=$JSON >> $GITHUB_OUTPUT
           echo $JSON > filtered-repos.json
 
+          COUNT=$(jq '. | length' filtered-repos.json)
+
+          echo "## Repositories with supported build systems: $COUNT" >> $GITHUB_STEP_SUMMARY
+
       - name: save results
         uses: actions/upload-artifact@v3
         with:
