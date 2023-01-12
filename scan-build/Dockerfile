@@ -5,6 +5,7 @@ ENV USER root
 ENV LLVM_VERSION 15
  
 COPY scan-build/llvm.sh /tmp/llvm.sh
+COPY scan-build/scan-build.sh /scan-build.sh
 
 RUN apt-get update && apt-get install -y \
     build-essential pkg-config coreutils binutils \
@@ -17,5 +18,6 @@ RUN apt-get update && apt-get install -y \
     gnupg lsb-release software-properties-common git
 RUN apt-get clean
 RUN chmod +x /tmp/llvm.sh && /tmp/llvm.sh && rm /tmp/llvm.sh
+RUN chmod +x /scan-build.sh
 
-ENTRYPOINT /work/scan-build/scan-build.sh
+ENTRYPOINT /scan-build.sh

@@ -5,14 +5,7 @@ SREPO=${1:-srepo}
 export OUTPUT=/work/$SREPO
 
 find_autoconf_builddir() {
-  local search=""
-  search+=$(find_autoconf_builddir "configure")
-  search+=$(find_autoconf_builddir "autogen.sh")
-  search+=$(find_builddir "bootstrap.sh")
-  search+=$(find_builddir "bootstrap")
-  search+=$(find_builddir "boot")
-  search+=$(find_builddir "buildconf")
-  search+=$(find_builddir "configure.ac")
+  local search="configure autogen.sh bootstrap.sh bootstrap boot buildconf configure.ac"
 
   for f in $search; do
     local dir=$(find . -iname "$f" -type f -printf '%h\n')
@@ -131,6 +124,9 @@ scan_build_autoconf() {
 
               Configure)
                 mv Configure configure
+                ;;
+
+              configure)
                 ;;
 
               *)
