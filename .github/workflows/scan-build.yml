@@ -60,7 +60,7 @@ jobs:
     needs: get_input
     uses: ./.github/workflows/work2matrix.yml
     with:
-      input: ${{ steps.get_input.outputs.input }}
+      input: ${{ needs.get_input.outputs.input }}
 
   m1:
     needs: [prepare-docker, split]
