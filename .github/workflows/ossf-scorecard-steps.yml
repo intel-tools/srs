@@ -1,0 +1,51 @@
+on:
+  workflow_call:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        default: ''
+        type: string
+jobs:
+  ossf-scorecard:
+    runs-on: ubuntu-latest
+
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: generate save directory name
+        shell: bash
+        id: vars
+        run: |
+          SREPO=$(echo -n ${{ inputs.repo }} | tr '/' .)
+          echo "SREPO set to ${SREPO}"
+          echo "SREPO=${SREPO}" >> $GITHUB_OUTPUT
+
+      - name: checkout repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+
+      - name: run OSFF scorecard
+        uses: ossf/scorecard-action@v2.1.2
+        with:
+          results_file: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
+          results_format: json
+          publish_results: false
+
+      - name: check score and record summary
+        run: |
+          score=$(jq '.score' ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json)
+          echo "## OSSF scorecard aggregate score: $score" >> $GITHUB_STEP_SUMMARY
+
+          if [ $score == "-1" ]; then
+            exit 1
+          fi
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 10
+          name: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard
+          path: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json

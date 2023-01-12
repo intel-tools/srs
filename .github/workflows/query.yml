@@ -1,0 +1,146 @@
+name: Perform various scans on the results of the query
+on:
+  repository_dispatch:
+    types: [query-command]
+  pull_request:
+    branches: [ main ]
+jobs:
+  query-repositories:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    outputs:
+      json: ${{ steps.json.outputs.json }}
+      comment-id: ${{ steps.comment.outputs.comment-id }}
+    steps:
+      - name: install dependencies
+        run: |
+          type -p curl >/dev/null || sudo apt install curl -y
+          curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt-get update \
+          && sudo apt-get install gh -y
+
+      - name: set search terms
+        env:
+          DEFAULT: "archived:false language:c language:c++ org:intel"
+          MINSTARS: 1 # below this will be skipped
+          MAXSTARS: 4000 # above this will be grabbed in a single loop, needs to be <=1000 results
+          INCREMENT: 200 # size to group search loop into
+        id: set
+        run: |
+          search=${{ github.event.client_payload.slash_command.args.named.search }}
+          [[ -z $search ]] && search="$DEFAULT"
+          echo search="$search" >> $GITHUB_OUTPUT
+
+          minstars=${{ github.event.client_payload.slash_command.args.named.minstars }}
+          [[ -z $minstars ]] && minstars="$MINSTARS"
+          echo minstars="$minstars" >> $GITHUB_OUTPUT
+
+          maxstars=${{ github.event.client_payload.slash_command.args.named.maxstars }}
+          [[ -z $maxstars ]] && maxstars="$MAXSTARS"
+          echo maxstars="$maxstars" >> $GITHUB_OUTPUT
+
+          increment=${{ github.event.client_payload.slash_command.args.named.increment }}
+          [[ -z $increment ]] && increment="$INCREMENT"
+          echo increment="$increment" >> $GITHUB_OUTPUT
+
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - name: execute search
+        env:
+          SEARCH: ${{ steps.set.outputs.search }}
+          MINSTARS: ${{ steps.set.outputs.minstars }}
+          MAXSTARS: ${{ steps.set.outputs.maxstars }}
+          INCREMENT: ${{ steps.set.outputs.increment }}
+        run: |
+          ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
+
+          count=$(jq '.repos | length' repos.json)
+
+          echo "Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> query-summary.md
+
+      - name: filter by build system
+        id: json
+        run: |
+          JSON=$(./query/filter.sh)
+          echo "${JSON}" > filtered-repos.json
+          COUNT=$(jq '. | length' filtered-repos.json)
+
+          echo "Repositories with supported build systems: $COUNT" >> query-summary.md
+          echo json=$JSON >> $GITHUB_OUTPUT
+
+      - name: record run id
+        run: |
+          echo "Github Actions Run ID: ${{ github.run_id }}" >> query-summary.md
+          echo "---" >> summary.md
+
+      - name: Github step summary
+        run: cat query-summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Create comment
+        uses: peter-evans/create-or-update-comment@v2
+        id: comment
+        with:
+          token: ${{ secrets.GHPAT }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body-file: query-summary.md
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 90
+          name: query-repositories
+          path: |
+            repos.json
+            filtered-repos.json
+            query-summary.md
+
+  scan-build:
+    needs: query-repositories
+    uses: ./.github/workflows/scan-build.yml
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
+
+  ossf-scorecard:
+    needs: query-repositories
+    uses: ./.github/workflows/ossf-scorecard.yml
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
+
+  aggregate-results:
+    needs: [query-repositories, scan-build, ossf-scorecard]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v3
+
+      - name: Summarize results
+        run: ./query/summary.sh
+
+      - name: Github step summary
+        run: cat summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Update comment
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          token: ${{ secrets.GHPAT }}
+          comment-id: ${{ needs.query-repositories.outputs.comment-id }}
+          body-file: summary.md
+          reactions: hooray
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 90
+          name: aggregate-results
+          path: |
+            bug_breakdown.json
+            score_vs_bugs.csv
+            summary.md
+            all-results.tar.gz
