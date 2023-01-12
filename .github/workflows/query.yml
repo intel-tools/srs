@@ -10,7 +10,7 @@ jobs:
     env:
       GH_TOKEN: ${{ secrets.GHPAT }}
     outputs:
-      json: ${{ steps.search.outputs.json }}
+      json: ${{ steps.json.outputs.json }}
     steps:
       - name: install dependencies
         run: |
@@ -29,7 +29,6 @@ jobs:
           echo search="$search" >> $GITHUB_OUTPUT
 
       - name: execute search
-        id: search
         env:
           #SEARCH: "language:c language:c++ org:intel stars:>=100"
           #SEARCH: "language:c language:c++ stars:>=10000"
@@ -108,15 +107,49 @@ jobs:
           count=$(jq '.data.search.repositoryCount' data.0.json)
 
           echo "## Repositories matching search query '${SEARCH}': $count" >> $GITHUB_STEP_SUMMARY
-          JSON=$(jq -c '.' repos.json)
+
+      - name: filter by build system
+        id: json
+        run: |
+          jq -rc '.repos[].repo | "\(.nameWithOwner) \(.languages.nodes[].name)"' repos.json > flattened-repos.txt
+
+          while read INFO; do
+            repo=$(echo $INFO | awk '{ print $1 }')
+            lang=$(echo $INFO | awk '{ print $2 }')
+
+            case $lang in
+              M4)
+                echo $repo >> repos.txt
+                ;;
+              Meson)
+                echo $repo >> repos.txt
+                ;;
+              CMake)
+                echo $repo >> repos.txt
+                ;;
+              *)
+                ;;
+            esac
+          done < flattened-repos.txt
+
+          cat repos.txt | sort -u > filtered-repos.txt
+
+          JSON="["
+          while read INFO; do
+            JSON+="{\"repo\":\"$INFO\"},"
+          done < filtered-repos.txt
+          JSON="${JSON%?}"
+          JSON+="]"
+
           echo json=$JSON >> $GITHUB_OUTPUT
+          echo $JSON > filtered-repos.json
 
       - name: save results
         uses: actions/upload-artifact@v3
         with:
           retention-days: 1
           name: repo-artifacts
-          path: repos.json
+          path: ./*.json
 
   scan-build:
     needs: query-repositories
