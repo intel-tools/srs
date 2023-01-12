@@ -118,8 +118,14 @@ jobs:
           path: repos.json
 
   scan-build:
-    needs: [query-repositories]
+    needs: query-repositories
     uses: ./.github/workflows/scan-build.yml
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
+
+  ossf-scorecard:
+    needs: query-repositories
+    uses: ./.github/workflows/ossf-scorecard.yml
     with:
       input: ${{ needs.query-repositories.outputs.json }}
 

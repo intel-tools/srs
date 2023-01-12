@@ -1,0 +1,33 @@
+on:
+  workflow_call:
+    inputs:
+      input:
+        description: 'json array of inputs'
+        required: true
+        default: ''
+        type: string
+jobs:
+  split:
+    uses: ./.github/workflows/work2matrix.yml
+    with:
+      input: ${{ inputs.input }}
+
+  m1:
+    needs: split
+    if: needs.split.outputs.matrix1 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix1)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m2:
+    needs: split
+    if: needs.split.outputs.matrix2 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix2)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
