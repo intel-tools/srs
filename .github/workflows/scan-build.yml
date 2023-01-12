@@ -38,7 +38,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  get_input:
+  get-input:
     runs-on: ubuntu-latest
     outputs:
       input: ${{ steps.json.outputs.json }}
@@ -57,10 +57,10 @@ jobs:
           echo json=$JSON >> $GITHUB_OUTPUT
 
   split:
-    needs: get_input
+    needs: get-input
     uses: ./.github/workflows/work2matrix.yml
     with:
-      input: ${{ needs.get_input.outputs.input }}
+      input: ${{ needs.get-input.outputs.input }}
 
   m1:
     needs: [prepare-docker, split]
@@ -71,9 +71,6 @@ jobs:
     uses: ./.github/workflows/scan-build-steps.yml
     with:
       repo: ${{ matrix.repo }}
-      autoconf: ${{ matrix.autoconf }}
-      meson: ${{ matrix.meson }}
-      cmake: ${{ matrix.cmake }}
 
   m2:
     needs: [prepare-docker, split]
@@ -84,6 +81,3 @@ jobs:
     uses: ./.github/workflows/scan-build-steps.yml
     with:
       repo: ${{ matrix.repo }}
-      autoconf: ${{ matrix.autoconf }}
-      meson: ${{ matrix.meson }}
-      cmake: ${{ matrix.cmake }}

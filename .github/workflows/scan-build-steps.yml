@@ -6,21 +6,6 @@ on:
         required: true
         default: ''
         type: string
-      autoconf:
-        description: 'autoconf'
-        required: false
-        default: ''
-        type: string
-      cmake:
-        description: 'cmake'
-        required: false
-        default: ''
-        type: string
-      meson:
-        description: 'meson'
-        required: false
-        default: ''
-        type: string
 jobs:
   scan-build:
     runs-on: ubuntu-latest
@@ -42,10 +27,6 @@ jobs:
 
           echo "SREPO set to ${SREPO}"
           echo "SREPO=$srepo" >> $GITHUB_OUTPUT
-
-          echo "autoconf=${{ inputs.autoconf }}" >> $GITHUB_OUTPUT
-          echo "meson=${{ inputs.meson }}" >> $GITHUB_OUTPUT
-          echo "cmake=${{ inputs.cmake }}" >> $GITHUB_OUTPUT
 
       - name: checkout repo
         uses: actions/checkout@v3
