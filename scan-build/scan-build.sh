@@ -1,5 +1,6 @@
 #!/bin/bash
 set -o pipefail
+set -x
 
 export REPO=$1
 export LLVM_VERSION=${2:-"15"}
