@@ -18,7 +18,7 @@ find_autoconf_builddir() {
       if [ $(grep "$PWD/$d" /work/build_autoconf | wc -l) -eq 0 ]; then
         ODIR=$PWD
         cd $d
-        s=$(find . -iname "$f" -type f | head -n1)
+        s=$(find . -iname "$f" -type f | head -n1 | awk -F'/' '{ print $2 }')
         echo "Found $s in $PWD"
         echo "$PWD $s" >> /work/build_autoconf
         cd $ODIR
