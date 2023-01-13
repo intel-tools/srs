@@ -71,7 +71,9 @@ jobs:
       - name: compress result
         if: ${{ always() }}
         run: |
-          tar -czvf ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz  ${{ steps.vars.outputs.SREPO }}
+          USER=$(whoami)
+          chown -R $USER.$USER ${{ steps.vars.outputs.SREPO }}
+          tar -czvf ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz --remove-files ${{ steps.vars.outputs.SREPO }}
 
       - name: save results
         if: ${{ always() }}
