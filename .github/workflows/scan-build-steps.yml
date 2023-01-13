@@ -72,7 +72,7 @@ jobs:
         if: ${{ always() }}
         run: |
           USER=$(whoami)
-          chown -R $USER.$USER ${{ steps.vars.outputs.SREPO }}
+          sudo chown -R $USER.$USER ${{ steps.vars.outputs.SREPO }}
           tar -czvf ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz --remove-files ${{ steps.vars.outputs.SREPO }}
 
       - name: save results
