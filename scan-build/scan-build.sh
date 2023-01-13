@@ -293,7 +293,7 @@ generate_json() {
 
           JSON="{ \"repo\": \"$REPO\", \"scan-date\": \"$now\", \"functions\": $functions, \"bugs\": ["
 
-          for f in $(find . -type f -name '*.html' | grep report); do
+          for f in $(find ${OUTPUT}/scan-build-result -type f -name '*.html' | grep report); do
             bugfound=1
             bugtype=$(parse_info $f BUGTYPE)
             bugcategory=$(parse_info $f BUGCATEGORY)
