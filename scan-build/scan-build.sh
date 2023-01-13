@@ -391,3 +391,5 @@ search_and_install_dependencies
 get_submodules
 scan_build
 generate_json
+
+chmod -R +r $OUTPUT
