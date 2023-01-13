@@ -39,7 +39,7 @@ jobs:
         id: get-docker
         with:
           path: scan-build.tar
-          key: scan-build-5
+          key: scan-build-6-${{ github.run_id }}
 
       - name: Load image
         run: docker load -i scan-build.tar
