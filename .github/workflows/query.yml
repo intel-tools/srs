@@ -25,7 +25,7 @@ jobs:
         id: set
         run: |
           search=${{ github.event.client_payload.slash_command.args.named.search }}
-          [[ -z $search ]] && search="language:c language:c++ stars:>=10000"
+          [[ -z $search ]] && search="language:c language:c++ stars:>=1000"
           echo search="$search" >> $GITHUB_OUTPUT
 
       - name: execute search
@@ -160,15 +160,14 @@ jobs:
     with:
       input: ${{ needs.query-repositories.outputs.json }}
 
-  #ossf-scorecard:
-  #  needs: query-repositories
-  #  uses: ./.github/workflows/ossf-scorecard.yml
-  #  with:
-  #    input: ${{ needs.query-repositories.outputs.json }}
+  ossf-scorecard:
+    needs: query-repositories
+    uses: ./.github/workflows/ossf-scorecard.yml
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
 
   aggregate-results:
-    #needs: [scan-build, ossf-scorecard]
-    needs: [scan-build]
+    needs: [scan-build, ossf-scorecard]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -183,8 +182,11 @@ jobs:
       - name: Calculate total bugs found
         run: |
           bugs=$(find . -type f -name 'result.json' -type f -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
+          complex_functions=$(find . -type f -name 'result.json' -type f -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
+          bugs=$(( bugs - complex_functions ))
 
           echo "### Total number of bugs found: ${bugs}" >> $GITHUB_STEP_SUMMARY
+          echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> $GITHUB_STEP_SUMMARY
 
           JSON="{\"bugs\": $bugs, "
 

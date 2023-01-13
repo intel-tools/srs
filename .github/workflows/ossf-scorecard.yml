@@ -31,3 +31,83 @@ jobs:
     uses: ./.github/workflows/ossf-scorecard-steps.yml
     with:
       repo: ${{ matrix.repo }}
+
+  m3:
+    needs: split
+    if: needs.split.outputs.matrix3 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix3)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m4:
+    needs: split
+    if: needs.split.outputs.matrix4 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix4)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m5:
+    needs: split
+    if: needs.split.outputs.matrix5 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix5)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m6:
+    needs: split
+    if: needs.split.outputs.matrix6 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix6)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m7:
+    needs: split
+    if: needs.split.outputs.matrix7 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix7)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m8:
+    needs: split
+    if: needs.split.outputs.matrix8 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix8)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m9:
+    needs: split
+    if: needs.split.outputs.matrix9 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix9)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m10:
+    needs: split
+    if: needs.split.outputs.matrix10 != null
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix10)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
