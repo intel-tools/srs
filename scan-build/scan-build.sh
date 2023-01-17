@@ -78,11 +78,11 @@ search_and_install_dependencies() {
             newline=0
 
             while read -r line; do
-              if [ $(echo -n "${line}" | grep "apt-get install" | wc -l) -eq 1 ]; then
+              if [ $(echo -n "${line}" | grep "apt" | grep "install" | wc -l) -eq 1 ]; then
                 found=1
               fi
 
-              # found install line, grab all potential packages from this line plus lines after while there is linebreak 
+              # found install line, grab all potential packages from this line plus lines after while there is linebreak
               if [ $found -eq 1 ]; then
                 if [ $newline -eq 0 ]; then
                   packages+=$(echo -n $line | sed -r 's/^.*install //' | sed -r 's/^;//' | sed 's/\\/ /g' | awk '{split($0,a," "); for (x in a) { if (a[x] ~ /^[^-].*$/) { printf("%s ", a[x]) } } }')
@@ -287,8 +287,8 @@ mkdir -p $OUTPUT
 cd /work/repo
 
 find_builddirs
-search_and_install_dependencies
-get_submodules
+timeout -s 2 $TIMEOUT search_and_install_dependencies
+timeout -s 2 $TIMEOUT get_submodules
 scan_build
 
 chmod -R +r $OUTPUT
