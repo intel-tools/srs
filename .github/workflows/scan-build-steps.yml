@@ -39,13 +39,22 @@ jobs:
         id: get-docker
         with:
           path: scan-build.tar
-          key: scan-build-6-${{ github.run_id }}
+          key: scan-build
 
       - name: Load image
         run: docker load -i scan-build.tar
 
       - name: scan-build
         run: docker run -v "$GITHUB_WORKSPACE":/work scan-build "${{ inputs.repo }}"
+
+      - name: Remove docker
+        run: rm scan-build.tar
+
+      - name: convert to json
+        if: ${{ always() }}
+        env:
+          SREPO: ${{ steps.vars.outputs.SREPO }}
+        run: ./scan-build/convert2json.sh $SREPO
 
       - name: Adding scan summary to Github markdown
         if: ${{ always() }}
