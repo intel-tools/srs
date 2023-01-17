@@ -11,6 +11,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
     outputs:
       json: ${{ steps.json.outputs.json }}
+      comment-id: ${{ steps.comment.outputs.comment-id }}
     steps:
       - name: install dependencies
         run: |
@@ -29,6 +30,7 @@ jobs:
           echo search="$search" >> $GITHUB_OUTPUT
 
       - name: execute search
+        id: search
         env:
           #SEARCH: "language:c language:c++ org:intel stars:>=100"
           #SEARCH: "language:c language:c++ stars:>=10000"
@@ -105,7 +107,7 @@ jobs:
           execute_query 5
           count=$(jq '.data.search.repositoryCount' data.0.json)
 
-          echo "## Repositories matching search query '${SEARCH}': $count" >> $GITHUB_STEP_SUMMARY
+          echo "## Repositories matching search query '${SEARCH}': $count" >> summary.md
 
       - name: filter by build system
         id: json
@@ -145,7 +147,17 @@ jobs:
 
           COUNT=$(jq '. | length' filtered-repos.json)
 
-          echo "## Repositories with supported build systems: $COUNT" >> $GITHUB_STEP_SUMMARY
+          echo "## Repositories with supported build systems: $COUNT" >> summary.md
+
+      - name: Github step summary
+        run: cat summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Create comment
+        uses: peter-evans/create-or-update-comment@v2
+        id: comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-file: summary.md
 
       - name: save results
         uses: actions/upload-artifact@v3
@@ -167,7 +179,7 @@ jobs:
       input: ${{ needs.query-repositories.outputs.json }}
 
   aggregate-results:
-    needs: [scan-build, ossf-scorecard]
+    needs: [query-repositories, scan-build, ossf-scorecard]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
@@ -180,13 +192,17 @@ jobs:
           done
 
       - name: Calculate total bugs found
+        id: summarize
         run: |
           bugs=$(find . -type f -name 'result.json' -type f -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
           complex_functions=$(find . -type f -name 'result.json' -type f -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
           bugs=$(( bugs - complex_functions ))
 
-          echo "### Total number of bugs found: ${bugs}" >> $GITHUB_STEP_SUMMARY
-          echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> $GITHUB_STEP_SUMMARY
+          echo "### Total number of bugs found: ${bugs}" >> summary.md
+          echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> summary.md
+
+          echo bugs=$bugs >> $GITHUB_OUTPUT
+          echo complex_functions=$complex_functions >> $GITHUB_OUTPUT
 
           JSON="{\"bugs\": $bugs, "
 
@@ -196,54 +212,54 @@ jobs:
             jq '.categories[] | "\(.category),\(.count)"' $f | tr -d '"' >> aggregate-bug-categories.txt
           done
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "***" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "" >> summary.md
+          echo "***" >> summary.md
+          echo "" >> summary.md
 
           cat aggregate-bug-categories.txt | awk -F',' '{ print $1 }' | sort -u > bug-categories.txt
           cat aggregate-bug-types.txt | awk -F',' '{ print $1 }' | sort -u > bug-types.txt
 
-          echo "#### Bug categories" >> $GITHUB_STEP_SUMMARY
+          echo "#### Bug categories" >> summary.md
 
           JSON+="\"categories\": ["
           while read -r line; do
             c=$(grep "$line" aggregate-bug-categories.txt | awk -F ',' '{ sum += $2 } END { print sum }')
-            echo "##### $line: $c" >> $GITHUB_STEP_SUMMARY
+            echo "##### $line: $c" >> summary.md
             JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
 
             for r in $(grep -rl "$line" */result.json | xargs jq '.repo'); do
               JSON+="{\"repo\": $r},"
-              echo $r | tr -d '"' >> $GITHUB_STEP_SUMMARY
+              echo $r | tr -d '"' >> summary.md
             done
             JSON="${JSON%?}" # Remove last ","
             JSON+="]},"
 
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "***" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "" >> summary.md
+            echo "***" >> summary.md
+            echo "" >> summary.md
 
           done < bug-categories.txt
           JSON="${JSON%?}" # Remove last ","
           JSON+="], "
 
-          echo "#### Bug types" >> $GITHUB_STEP_SUMMARY
+          echo "#### Bug types" >> summary.md
 
           JSON+="\"types\": ["
           while read -r line; do
             c=$(grep "$line" aggregate-bug-types.txt | awk -F ',' '{ sum += $2 } END { print sum }')
-            echo "##### $line: $c" >> $GITHUB_STEP_SUMMARY
+            echo "##### $line: $c" >> summary.md
             JSON+="{\"type\": \"$line\", \"count\": $c, \"repo\": ["
 
             for r in $(grep -rl "$line" */result.json | xargs jq '.repo'); do
               JSON+="{\"repo\": $r},"
-              echo $r | tr -d '"' >> $GITHUB_STEP_SUMMARY
+              echo $r | tr -d '"' >> summary.md
             done
             JSON="${JSON%?}" # Remove last ","
             JSON+="]},"
 
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "***" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "" >> summary.md
+            echo "***" >> summary.md
+            echo "" >> summary.md
 
           done < bug-types.txt
           JSON="${JSON%?}" # Remove last ","
@@ -251,20 +267,20 @@ jobs:
 
           echo $JSON > aggregate-results.json
 
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "***" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "" >> summary.md
+          echo "***" >> summary.md
+          echo "" >> summary.md
 
           clean_repos=$(cat clean-repos.txt | wc -l)
-          echo "### Repositories with no bugs: ${clean_repos}" >> $GITHUB_STEP_SUMMARY
-          cat clean-repos.txt >> $GITHUB_STEP_SUMMARY
+          echo "### Repositories with no bugs: ${clean_repos}" >> summary.md
+          cat clean-repos.txt >> summary.md
 
       - name: compare bugs vs score
         run: |
-          echo "### Breakdown" >> $GITHUB_STEP_SUMMARY
+          echo "### Breakdown" >> summary.md
 
-          echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> $GITHUB_STEP_SUMMARY
-          echo "| ----------- | ----------- | --------- | ---------------------- |" >> $GITHUB_STEP_SUMMARY
+          echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> summary.md
+          echo "| ----------- | ----------- | --------- | ---------------------- |" >> summary.md
 
           for f in $(find . -type f -name 'result.json'); do
             repo=$(jq '.repo' $f | tr -d '"')
@@ -280,9 +296,19 @@ jobs:
             score=$(jq '.score' $srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
 
             echo "l: $repo, $srepo, $score, $bugs, $complex_functions / $functions"
-            echo "| $repo | $score | $bugs | $complex_functions / $functions |" >> $GITHUB_STEP_SUMMARY
+            echo "| $repo | $score | $bugs | $complex_functions / $functions |" >> summary.md
             echo "$repo,$score,$bugs,$functions,$complex_functions" >> score_vs_bugs.csv
           done
+
+      - name: Github step summary
+        run: cat summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: Update comment
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          comment-id: ${{ needs.query-repositories.outputs.comment-id }}
+          body-file: summary.md
+          reactions: hooray
 
       - name: save results
         uses: actions/upload-artifact@v3
