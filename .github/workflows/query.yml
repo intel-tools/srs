@@ -150,7 +150,7 @@ jobs:
       - name: save results
         uses: actions/upload-artifact@v3
         with:
-          retention-days: 1
+          retention-days: 90
           name: repo-artifacts
           path: ./*repos.json
 
@@ -287,13 +287,13 @@ jobs:
       - name: save results
         uses: actions/upload-artifact@v3
         with:
-          retention-days: 1
+          retention-days: 90
           name: aggregate-results
           path: aggregate-results.json
 
       - name: score vs bugs csv
         uses: actions/upload-artifact@v3
         with:
-          retention-days: 1
+          retention-days: 90
           name: score-v-bugs
           path: score_vs_bugs.csv

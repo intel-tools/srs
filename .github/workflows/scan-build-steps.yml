@@ -79,6 +79,6 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
-          retention-days: 1
+          retention-days: 10
           name: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}
           path: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz
