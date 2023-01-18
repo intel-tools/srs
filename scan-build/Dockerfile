@@ -4,7 +4,6 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV USER root
  
 COPY scan-build/scan-build.sh /scan-build.sh
-COPY scan-build/.gitconfig /root
 
 RUN apt-get update && apt-get install -y \
     build-essential pkg-config coreutils binutils \
@@ -15,9 +14,9 @@ RUN apt-get update && apt-get install -y \
     wget curl libz3-dev time jq tar \
     python3 libpython3-dev libboost-all-dev \
     gnupg lsb-release software-properties-common git \
-    clang-15 clang-tools-15 clang-tidy-15
-RUN apt-get clean
-RUN chmod +x /scan-build.sh
-RUN git config --global --add safe.directory /work
+    clang-15 clang-tools-15 clang-tidy-15 \
+    && apt-get clean \
+    && chmod +x /scan-build.sh \
+    && git config --global --add safe.directory /work
 
 ENTRYPOINT ["/scan-build.sh"]
