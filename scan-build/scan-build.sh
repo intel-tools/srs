@@ -287,8 +287,8 @@ mkdir -p $OUTPUT
 cd /work/repo
 
 find_builddirs
-timeout -s 2 $TIMEOUT search_and_install_dependencies
-timeout -s 2 $TIMEOUT get_submodules
+search_and_install_dependencies
+get_submodules
 scan_build
 
 chmod -R +r $OUTPUT
