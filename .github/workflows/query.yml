@@ -157,6 +157,7 @@ jobs:
         id: comment
         with:
           issue-number: ${{ github.event.pull_request.number }}
+          token: ${{ secrets.GHPAT }}
           body-file: summary.md
 
       - name: save results
@@ -306,6 +307,7 @@ jobs:
       - name: Update comment
         uses: peter-evans/create-or-update-comment@v2
         with:
+          token: ${{ secrets.GHPAT }}
           comment-id: ${{ needs.query-repositories.outputs.comment-id }}
           body-file: summary.md
           reactions: hooray
