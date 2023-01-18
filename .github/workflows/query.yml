@@ -23,17 +23,19 @@ jobs:
           && sudo apt-get install gh -y
 
       - name: set search term
+        env:
+          DEFAULT: "language:c language:c++ org:intel stars:>=100"
+          #DEFAULT: "language:c language:c++ stars:>=10000"
+          #DEFAULT: "language:c language:c++ stars:>=1000"
         id: set
         run: |
           search=${{ github.event.client_payload.slash_command.args.named.search }}
-          [[ -z $search ]] && search="language:c language:c++ stars:>=1000"
+          [[ -z $search ]] && search="$DEFAULT"
           echo search="$search" >> $GITHUB_OUTPUT
 
       - name: execute search
         id: search
         env:
-          #SEARCH: "language:c language:c++ org:intel stars:>=100"
-          #SEARCH: "language:c language:c++ stars:>=10000"
           SEARCH: ${{ steps.set.outputs.search }}
         run: |
           execute_query() {
@@ -156,8 +158,8 @@ jobs:
         uses: peter-evans/create-or-update-comment@v2
         id: comment
         with:
-          issue-number: ${{ github.event.pull_request.number }}
           token: ${{ secrets.GHPAT }}
+          issue-number: ${{ github.event.pull_request.number }}
           body-file: summary.md
 
       - name: save results
@@ -165,7 +167,10 @@ jobs:
         with:
           retention-days: 90
           name: repo-artifacts
-          path: ./*repos.json
+          path: |
+            repos.json
+            filtered-repos.json
+            summary.md
 
   scan-build:
     needs: query-repositories
@@ -266,7 +271,7 @@ jobs:
           JSON="${JSON%?}" # Remove last ","
           JSON+="]}"
 
-          echo $JSON > aggregate-results.json
+          echo $JSON | jq '.' > aggregate-results.json
 
           echo "" >> summary.md
           echo "***" >> summary.md
@@ -317,11 +322,7 @@ jobs:
         with:
           retention-days: 90
           name: aggregate-results
-          path: aggregate-results.json
-
-      - name: score vs bugs csv
-        uses: actions/upload-artifact@v3
-        with:
-          retention-days: 90
-          name: score-v-bugs
-          path: score_vs_bugs.csv
+          path: |
+            aggregate-results.json
+            score_vs_bugs.csv
+            summary.md
