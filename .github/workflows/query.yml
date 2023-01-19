@@ -42,7 +42,7 @@ jobs:
           SEARCH: ${{ steps.set.outputs.search }}
           MINSTARS: 1000 # below this will be skipped
           MAXSTARS: 10000 # above this will be grabbed in a single loop, needs to be <=1000 results 
-          INCREMENT: 500 # size to group search loop into
+          INCREMENT: 200 # size to group search loop into
         run: |
           ./query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
 
