@@ -1,5 +1,5 @@
 #!/bin/bash
-SEARCH=$1
+SEARCH=${1:-""}
 MINSTARS=${2:-1000} # Starting range, no results from below this
 MAXSTARS=${3:-10000} # Stops splitting search above this, will have results above this
 INCREMENT=${4:-500} # Group size to split search into
@@ -8,7 +8,7 @@ INCREMENT=${4:-500} # Group size to split search into
 # even if the repositoryCount returns total number of matches (may also be limited to 4000).
 # Workaround is to break the search up into slots based on stars
 
-if [ -z $SEARCH ]; then
+if [ ${SEARCH} == "" ]; then
     echo "No search term specified"
     exit 1
 fi
