@@ -48,7 +48,7 @@ jobs:
 
           count=$(jq '.repos | length' repos.json)
 
-          echo "## Repositories matching search query '${SEARCH}': $count" >> summary.md
+          echo "## Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> summary.md
 
       - name: filter by build system
         id: json
