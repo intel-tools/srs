@@ -24,9 +24,9 @@ jobs:
 
       - name: set search term
         env:
-          DEFAULT: "archived:false language:c language:c++ org:intel stars:>=100"
+          #DEFAULT: "archived:false language:c language:c++ org:intel stars:>=100"
           #DEFAULT: "language:c language:c++ stars:>=10000"
-          #DEFAULT: "language:c language:c++ stars:>=1000"
+          DEFAULT: "archived:false language:c language:c++ stars:>=1000"
         id: set
         run: |
           search=${{ github.event.client_payload.slash_command.args.named.search }}
@@ -172,20 +172,21 @@ jobs:
             filtered-repos.json
             summary.md
 
-  scan-build:
-    needs: query-repositories
-    uses: ./.github/workflows/scan-build.yml
-    with:
-      input: ${{ needs.query-repositories.outputs.json }}
+  #scan-build:
+  #  needs: query-repositories
+  #  uses: ./.github/workflows/scan-build.yml
+  #  with:
+  #    input: ${{ needs.query-repositories.outputs.json }}
 
-  ossf-scorecard:
-    needs: query-repositories
-    uses: ./.github/workflows/ossf-scorecard.yml
-    with:
-      input: ${{ needs.query-repositories.outputs.json }}
+  #ossf-scorecard:
+  #  needs: query-repositories
+  #  uses: ./.github/workflows/ossf-scorecard.yml
+  #  with:
+  #    input: ${{ needs.query-repositories.outputs.json }}
 
   aggregate-results:
-    needs: [query-repositories, scan-build, ossf-scorecard]
+    #needs: [query-repositories, scan-build, ossf-scorecard]
+    needs: [query-repositories]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
