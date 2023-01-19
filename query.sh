@@ -71,7 +71,7 @@ execute_query() {
               cursor=$(echo -n $t | awk '{ print $2 }')
 
               if [ $c -gt 1000 ]; then
-                echo "Results will be truncated due to more then a 1000 matches to the query, consider decreasing the INCREMENT threshold"
+                echo "Results will be truncated due to more then a 1000 matches to the query ($c), consider decreasing the INCREMENT threshold"
                 exit 1
               fi
 
