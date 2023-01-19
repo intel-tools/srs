@@ -50,9 +50,6 @@ jobs:
       - name: scan-build
         run: docker run -v "$GITHUB_WORKSPACE":/work scan-build "${{ inputs.repo }}"
 
-      - name: Remove docker
-        run: rm scan-build.tar
-
       - name: fix permissions
         if: ${{ always() }}
         run: |
@@ -61,30 +58,30 @@ jobs:
 
       - name: convert to json
         if: ${{ always() }}
-        env:
-          SREPO: ${{ steps.vars.outputs.SREPO }}
-        run: ./scan-build/convert2json.sh $SREPO
+        run: ./scan-build/convert2json.sh ${{ steps.vars.outputs.SREPO }}
 
       - name: Adding scan summary to Github markdown
         if: ${{ always() }}
         env:
           SREPO: ${{ steps.vars.outputs.SREPO }}
         run: |
-          cd $GITHUB_WORKSPACE
           bugs=$(jq '.bugs | length' $SREPO/result.json)
           functions=$(jq '.functions | length' $SREPO/result.json)
-          if [ ${bugs} -gt 0 ]; then
-            echo "### ${{ inputs.repo }}: ${bugs} bugs found" >> $GITHUB_STEP_SUMMARY
-            echo "### Functions: $functions" >> $GITHUB_STEP_SUMMARY
-            echo "#### Bug categories" >> $GITHUB_STEP_SUMMARY
-            echo "| Category | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-            jq '.categories[] | "| \(.category) | \(.count) |"' $SREPO/result.json | tr -d '"' >> $GITHUB_STEP_SUMMARY
-            echo "#### Bug types" >> $GITHUB_STEP_SUMMARY
-            echo "| Type | Count |" >> $GITHUB_STEP_SUMMARY
-            echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
-            jq '.types[] | "| \(.type) | \(.count) |"' $SREPO/result.json | tr -d '"' >> $GITHUB_STEP_SUMMARY
-          fi
+
+          [[ ${bugs} -eq 0 ]] && exit 0
+
+          echo "### ${{ inputs.repo }}: ${bugs} bugs found" >> $SREPO/summary.md
+          echo "### Functions: $functions" >> $SREPO/summary.md
+          echo "#### Bug categories" >> $SREPO/summary.md
+          echo "| Category | Count |" >> $SREPO/summary.md
+          echo "| --- | --- |" >> $SREPO/summary.md
+          jq '.categories[] | "| \(.category) | \(.count) |"' $SREPO/result.json | tr -d '"' >> $SREPO/summary.md
+          echo "#### Bug types" >> $SREPO/summary.md
+          echo "| Type | Count |" >> $SREPO/summary.md
+          echo "| --- | --- |" >> $SREPO/summary.md
+          jq '.types[] | "| \(.type) | \(.count) |"' $SREPO/result.json | tr -d '"' >> $SREPO/summary.md
+
+          cat $SREPO/summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: compress result
         if: ${{ always() }}
