@@ -283,6 +283,7 @@ jobs:
 
       - name: compare bugs vs score
         run: |
+          touch score_vs_bugs.csv
           echo "### Breakdown" >> summary.md
 
           echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> summary.md
@@ -301,9 +302,11 @@ jobs:
 
             score=$(jq '.score' $srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
 
-            echo "l: $repo, $srepo, $score, $bugs, $complex_functions / $functions"
             echo "| $repo | $score | $bugs | $complex_functions / $functions |" >> summary.md
-            echo "$repo,$score,$bugs,$functions,$complex_functions" >> score_vs_bugs.csv
+
+            if [ $score -ge 0 ]; then
+              echo "$repo,$score,$bugs,$functions,$complex_functions" >> score_vs_bugs.csv
+            fi
           done
 
       - name: Github step summary
