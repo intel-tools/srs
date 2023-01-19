@@ -24,7 +24,7 @@ jobs:
 
       - name: set search term
         env:
-          DEFAULT: "language:c language:c++ org:intel stars:>=100"
+          DEFAULT: "archived:false language:c language:c++ org:intel stars:>=100"
           #DEFAULT: "language:c language:c++ stars:>=10000"
           #DEFAULT: "language:c language:c++ stars:>=1000"
         id: set
