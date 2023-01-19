@@ -8,7 +8,7 @@ INCREMENT=${4:-500} # Group size to split search into
 # even if the repositoryCount returns total number of matches (may also be limited to 4000).
 # Workaround is to break the search up into slots based on stars
 
-if [ ${SEARCH} == "" ]; then
+if [ -z "$SEARCH" ]; then
     echo "No search term specified"
     exit 1
 fi
