@@ -26,90 +26,27 @@ jobs:
         env:
           #DEFAULT: "archived:false language:c language:c++ org:intel stars:>=100"
           #DEFAULT: "language:c language:c++ stars:>=10000"
-          DEFAULT: "archived:false language:c language:c++ stars:>=1000"
+          DEFAULT: "archived:false language:c language:c++"
         id: set
         run: |
           search=${{ github.event.client_payload.slash_command.args.named.search }}
           [[ -z $search ]] && search="$DEFAULT"
           echo search="$search" >> $GITHUB_OUTPUT
 
+      - name: checkout repo
+        uses: actions/checkout@v3
+
       - name: execute search
         id: search
         env:
           SEARCH: ${{ steps.set.outputs.search }}
+          MINSTARS: 1000 # below this will be skipped
+          MAXSTARS: 10000 # above this will be grabbed in a single loop, needs to be <=1000 results 
+          INCREMENT: 500 # size to group search loop into
         run: |
-          execute_query() {
-            local counter=0
-            local cursor=""
-            local retry=$1
-            local retry_counter=$retry
+          ./query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
 
-            local query='
-            query($search: String!, $endCursor: String) {
-              search(
-                type: REPOSITORY,
-                query: $search,
-                first: 100
-                after: $endCursor
-              )
-              {
-                repositoryCount
-                repos: edges {
-                  repo: node {
-                    ... on Repository {
-                      nameWithOwner
-                      languages(first: 100) { nodes { name } }
-                    }
-                  }
-                }
-              pageInfo { hasNextPage endCursor }
-              }
-            rateLimit { remaining resetAt }
-            }
-            '
-
-            while : ; do
-
-              echo "Running iteration $counter of query $SEARCH"
-
-              if [ -z ${cursor} ]; then
-                gh api graphql -F search="$SEARCH" -f query="$query" > data.${counter}.json
-              else
-                gh api graphql -F search="$SEARCH" -F endCursor="${cursor}" -f query="$query" > data.${counter}.json
-              fi
-
-              r=$?
-
-              if [ $r -ne 0 ] && [ $retry_counter -gt 0 ]; then
-                sleep 5
-                (( retry_counter-- )) || :
-
-                # TODO: check rate limiting and sleep till resetAt if needed and then retry
-
-                continue
-              fi
-
-              t=$(jq '.data.search.pageInfo | "\(.hasNextPage) \(.endCursor)"' data.${counter}.json | tr -d '"')
-              next=$(echo -n $t | awk '{ print $1 }')
-              cursor=$(echo -n $t | awk '{ print $2 }')
-
-              echo "More data? $next $cursor"
-
-              if [ "${next}" == "false" ]; then
-                break
-              fi
-
-              retry_counter=$retry
-              (( counter++ )) || :
-
-            done
-
-            # merge jsons
-            find . -type f -name 'data.*.json' -exec jq -cn '{ repos: [ inputs.data.search.repos ] | add }' {} + > repos.json
-          }
-
-          execute_query 5
-          count=$(jq '.data.search.repositoryCount' data.0.json)
+          count=$(jq '.repos | length' repos.json)
 
           echo "## Repositories matching search query '${SEARCH}': $count" >> summary.md
 
