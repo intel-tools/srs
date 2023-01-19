@@ -93,6 +93,8 @@ jobs:
               next=$(echo -n $t | awk '{ print $1 }')
               cursor=$(echo -n $t | awk '{ print $2 }')
 
+              echo "More data? $next $cursor"
+
               if [ "${next}" == "false" ]; then
                 break
               fi
