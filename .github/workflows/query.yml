@@ -111,21 +111,20 @@ jobs:
             filtered-repos.json
             summary.md
 
-  #scan-build:
-  #  needs: query-repositories
-  #  uses: ./.github/workflows/scan-build.yml
-  #  with:
-  #    input: ${{ needs.query-repositories.outputs.json }}
+  scan-build:
+    needs: query-repositories
+    uses: ./.github/workflows/scan-build.yml
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
 
-  #ossf-scorecard:
-  #  needs: query-repositories
-  #  uses: ./.github/workflows/ossf-scorecard.yml
-  #  with:
-  #    input: ${{ needs.query-repositories.outputs.json }}
+  ossf-scorecard:
+    needs: query-repositories
+    uses: ./.github/workflows/ossf-scorecard.yml
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
 
   aggregate-results:
-    #needs: [query-repositories, scan-build, ossf-scorecard]
-    needs: [query-repositories]
+    needs: [query-repositories, scan-build, ossf-scorecard]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
