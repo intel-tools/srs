@@ -163,7 +163,7 @@ scan_build_autoconf() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/scan-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --keep-empty --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -210,7 +210,7 @@ scan_build_cmake() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/analyze-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --keep-empty --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -254,7 +254,7 @@ scan_build_meson() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/analyze-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --keep-empty --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -275,6 +275,10 @@ scan_build() {
 
     if [ ! -d $OUTPUT/scan-build-result ]; then
         exit 10
+    fi
+
+    if [ $(cat $OUTPUT/cognitive-complexity.log | wc -l) -eq 0 ]; then
+        exit 11
     fi
 }
 

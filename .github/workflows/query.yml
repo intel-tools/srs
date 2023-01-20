@@ -44,11 +44,11 @@ jobs:
           MAXSTARS: 10000 # above this will be grabbed in a single loop, needs to be <=1000 results 
           INCREMENT: 200 # size to group search loop into
         run: |
-          ./query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
+          ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
 
           count=$(jq '.repos | length' repos.json)
 
-          echo "## Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> summary.md
+          echo "Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> summary.md
 
       - name: filter by build system
         id: json
@@ -88,7 +88,12 @@ jobs:
 
           COUNT=$(jq '. | length' filtered-repos.json)
 
-          echo "## Repositories with supported build systems: $COUNT" >> summary.md
+          echo "Repositories with supported build systems: $COUNT" >> summary.md
+
+      - name: record run id
+        run: |
+          echo "Github Actions Run ID: ${{ github.run_id }}" >> summary.md
+          echo "---" >> summary.md
 
       - name: Github step summary
         run: cat summary.md >> $GITHUB_STEP_SUMMARY
@@ -128,125 +133,13 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
       - uses: actions/download-artifact@v3
 
-      - name: decompress
-        run: |
-          for f in $(find . -type f -name '*.tar.gz'); do
-            tar -xvf $f
-          done
-
-      - name: Calculate total bugs found
-        id: summarize
-        run: |
-          bugs=$(find . -type f -name 'result.json' -type f -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
-          complex_functions=$(find . -type f -name 'result.json' -type f -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
-          bugs=$(( bugs - complex_functions ))
-
-          echo "### Total number of bugs found: ${bugs}" >> summary.md
-          echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> summary.md
-
-          echo bugs=$bugs >> $GITHUB_OUTPUT
-          echo complex_functions=$complex_functions >> $GITHUB_OUTPUT
-
-          JSON="{\"bugs\": $bugs, "
-
-          for f in $(find . -type f -name 'result.json'); do
-            [[ $(jq '.bugs | length' $f) -eq 0 ]] && jq '.repo' $f | tr -d '"' >> clean-repos.txt
-            jq '.types[] | "\(.type),\(.count)"' $f | tr -d '"' >> aggregate-bug-types.txt
-            jq '.categories[] | "\(.category),\(.count)"' $f | tr -d '"' >> aggregate-bug-categories.txt
-          done
-
-          echo "" >> summary.md
-          echo "***" >> summary.md
-          echo "" >> summary.md
-
-          cat aggregate-bug-categories.txt | awk -F',' '{ print $1 }' | sort -u > bug-categories.txt
-          cat aggregate-bug-types.txt | awk -F',' '{ print $1 }' | sort -u > bug-types.txt
-
-          echo "#### Bug categories" >> summary.md
-
-          JSON+="\"categories\": ["
-          while read -r line; do
-            c=$(grep "$line" aggregate-bug-categories.txt | awk -F ',' '{ sum += $2 } END { print sum }')
-            echo "##### $line: $c" >> summary.md
-            JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
-
-            for r in $(grep -rl "$line" */result.json | xargs jq '.repo'); do
-              JSON+="{\"repo\": $r},"
-              echo $r | tr -d '"' >> summary.md
-            done
-            JSON="${JSON%?}" # Remove last ","
-            JSON+="]},"
-
-            echo "" >> summary.md
-            echo "***" >> summary.md
-            echo "" >> summary.md
-
-          done < bug-categories.txt
-          JSON="${JSON%?}" # Remove last ","
-          JSON+="], "
-
-          echo "#### Bug types" >> summary.md
-
-          JSON+="\"types\": ["
-          while read -r line; do
-            c=$(grep "$line" aggregate-bug-types.txt | awk -F ',' '{ sum += $2 } END { print sum }')
-            echo "##### $line: $c" >> summary.md
-            JSON+="{\"type\": \"$line\", \"count\": $c, \"repo\": ["
-
-            for r in $(grep -rl "$line" */result.json | xargs jq '.repo'); do
-              JSON+="{\"repo\": $r},"
-              echo $r | tr -d '"' >> summary.md
-            done
-            JSON="${JSON%?}" # Remove last ","
-            JSON+="]},"
-
-            echo "" >> summary.md
-            echo "***" >> summary.md
-            echo "" >> summary.md
-
-          done < bug-types.txt
-          JSON="${JSON%?}" # Remove last ","
-          JSON+="]}"
-
-          echo $JSON | jq '.' > aggregate-results.json
-
-          echo "" >> summary.md
-          echo "***" >> summary.md
-          echo "" >> summary.md
-
-          clean_repos=$(cat clean-repos.txt | wc -l)
-          echo "### Repositories with no bugs: ${clean_repos}" >> summary.md
-          cat clean-repos.txt >> summary.md
-
-      - name: compare bugs vs score
-        run: |
-          touch score_vs_bugs.csv
-          echo "### Breakdown" >> summary.md
-
-          echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> summary.md
-          echo "| ----------- | ----------- | --------- | ---------------------- |" >> summary.md
-
-          for f in $(find . -type f -name 'result.json'); do
-            repo=$(jq '.repo' $f | tr -d '"')
-            srepo=$(echo $repo | tr '/' .)
-            functions=$(jq '.functions' $f)
-
-            echo "$repo $srepo $functions"
-
-            complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $f | wc -l)
-            bugs=$(jq '.bugs | length' $f)
-            bugs=$(( bugs - complex_functions ))
-
-            score=$(jq '.score' $srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
-
-            echo "| $repo | $score | $bugs | $complex_functions / $functions |" >> summary.md
-
-            if [ $score -ge 0 ]; then
-              echo "$repo,$score,$bugs,$functions,$complex_functions" >> score_vs_bugs.csv
-            fi
-          done
+      - name: Summarize results
+        run: ./scripts/summary.sh
 
       - name: Github step summary
         run: cat summary.md >> $GITHUB_STEP_SUMMARY

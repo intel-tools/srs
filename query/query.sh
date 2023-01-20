@@ -2,7 +2,7 @@
 SEARCH=${1:-""}
 MINSTARS=${2:-1000} # Starting range, no results from below this
 MAXSTARS=${3:-10000} # Stops splitting search above this, will have results above this
-INCREMENT=${4:-500} # Group size to split search into
+INCREMENT=${4:-300} # Group size to split search into
 
 # Github search is limited to return 1000 results at most
 # even if the repositoryCount returns total number of matches (may also be limited to 4000).
