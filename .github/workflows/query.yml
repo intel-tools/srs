@@ -53,7 +53,8 @@ jobs:
         id: json
         run: |
           JSON=$(./query/filter.sh)
-          COUNT=$(echo "${JSON}" | jq '. | length')
+          echo "${JSON}" > filtered-repos.json
+          COUNT=$(jq '. | length' filtered-repos.json)
 
           echo "Repositories with supported build systems: $COUNT" >> summary.md
           echo json=$JSON >> $GITHUB_OUTPUT

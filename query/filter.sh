@@ -5,6 +5,7 @@ REPOSJSON=${1:-"repos.json"}
 search() {
     BUILD=$1
     jq ".repos[] | select( any(.; .repo.languages.nodes[].name == \"$BUILD\") )" $REPOSJSON | jq -r '.repo.nameWithOwner'
+    echo " "
 }
 
 if [ ! -f $REPOSJSON ]; then
@@ -13,10 +14,10 @@ if [ ! -f $REPOSJSON ]; then
 fi
 
 REPOS=$(search M4)
-REPOS+=" "
 REPOS+=$(search CMake)
-REPOS+=" "
 REPOS+=$(search Meson)
+
+REPOS=$(echo $REPOS | sort -u)
 
 JSON="["
 for repo in $REPOS; do
