@@ -107,7 +107,7 @@ jobs:
       - uses: actions/download-artifact@v3
 
       - name: Summarize results
-        run: ./scripts/summary.sh
+        run: ./query/summary.sh
 
       - name: Github step summary
         run: cat summary.md >> $GITHUB_STEP_SUMMARY
