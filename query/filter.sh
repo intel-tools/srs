@@ -13,7 +13,9 @@ if [ ! -f $REPOSJSON ]; then
 fi
 
 REPOS=$(search M4)
+REPOS+=" "
 REPOS+=$(search CMake)
+REPOS+=" "
 REPOS+=$(search Meson)
 
 JSON="["
