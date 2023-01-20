@@ -26,7 +26,7 @@ jobs:
         env:
           #DEFAULT: "archived:false language:c language:c++ org:intel stars:>=100"
           #DEFAULT: "language:c language:c++ stars:>=10000"
-          DEFAULT: "archived:false language:c language:c++"
+          DEFAULT: "archived:false language:c language:c++ org:intel"
         id: set
         run: |
           search=${{ github.event.client_payload.slash_command.args.named.search }}
@@ -37,11 +37,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: execute search
-        id: search
         env:
           SEARCH: ${{ steps.set.outputs.search }}
-          MINSTARS: 1000 # below this will be skipped
-          MAXSTARS: 10000 # above this will be grabbed in a single loop, needs to be <=1000 results 
+          MINSTARS: 100 # below this will be skipped
+          MAXSTARS: 500 # above this will be grabbed in a single loop, needs to be <=1000 results 
           INCREMENT: 200 # size to group search loop into
         run: |
           ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
@@ -53,42 +52,11 @@ jobs:
       - name: filter by build system
         id: json
         run: |
-          jq -rc '.repos[].repo | "\(.nameWithOwner) \(.languages.nodes[].name)"' repos.json > flattened-repos.txt
-
-          while read INFO; do
-            repo=$(echo $INFO | awk '{ print $1 }')
-            lang=$(echo $INFO | awk '{ print $2 }')
-
-            case $lang in
-              M4)
-                echo $repo >> repos.txt
-                ;;
-              Meson)
-                echo $repo >> repos.txt
-                ;;
-              CMake)
-                echo $repo >> repos.txt
-                ;;
-              *)
-                ;;
-            esac
-          done < flattened-repos.txt
-
-          cat repos.txt | sort -u > filtered-repos.txt
-
-          JSON="["
-          while read INFO; do
-            JSON+="{\"repo\":\"$INFO\"},"
-          done < filtered-repos.txt
-          JSON="${JSON%?}"
-          JSON+="]"
-
-          echo json=$JSON >> $GITHUB_OUTPUT
-          echo $JSON > filtered-repos.json
-
-          COUNT=$(jq '. | length' filtered-repos.json)
+          JSON=$(./query/filter.sh)
+          COUNT=$(echo "${JSON}" | jq '. | length')
 
           echo "Repositories with supported build systems: $COUNT" >> summary.md
+          echo json=$JSON >> $GITHUB_OUTPUT
 
       - name: record run id
         run: |
