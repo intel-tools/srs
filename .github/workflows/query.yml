@@ -24,9 +24,8 @@ jobs:
 
       - name: set search term
         env:
-          #DEFAULT: "archived:false language:c language:c++ org:intel stars:>=100"
-          #DEFAULT: "language:c language:c++ stars:>=10000"
-          DEFAULT: "archived:false language:c language:c++ org:intel"
+          #DEFAULT: "archived:false language:c language:c++ org:intel"
+          DEFAULT: "archived:false language:c language:c++"
         id: set
         run: |
           search=${{ github.event.client_payload.slash_command.args.named.search }}
@@ -39,8 +38,8 @@ jobs:
       - name: execute search
         env:
           SEARCH: ${{ steps.set.outputs.search }}
-          MINSTARS: 100 # below this will be skipped
-          MAXSTARS: 500 # above this will be grabbed in a single loop, needs to be <=1000 results 
+          MINSTARS: 1000 # below this will be skipped
+          MAXSTARS: 3000 # above this will be grabbed in a single loop, needs to be <=1000 results
           INCREMENT: 200 # size to group search loop into
         run: |
           ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
