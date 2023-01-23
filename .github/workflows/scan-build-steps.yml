@@ -58,7 +58,7 @@ jobs:
 
       - name: convert to json
         if: ${{ always() }}
-        run: ./scan-build/convert2json.sh ${{ steps.vars.outputs.SREPO }}
+        run: ./scan-build/convert2json.sh ${{ inputs.repo }} ${{ steps.vars.outputs.SREPO }}
 
       - name: Adding scan summary to Github markdown
         if: ${{ always() }}

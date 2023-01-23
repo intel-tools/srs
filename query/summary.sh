@@ -3,7 +3,8 @@ ARTIFACT_DIR=${1:-"."}
 
 decompress() {
     for f in $(find $ARTIFACT_DIR -type f -name '*.tar.gz'); do
-        tar -xvf $f
+        echo "Extracting $f"
+        tar -xvf $f -C $ARTIFACT_DIR > /dev/null
     done
 }
 

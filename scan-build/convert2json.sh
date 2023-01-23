@@ -1,8 +1,9 @@
 #!/bin/bash
-export OUTPUT=$1
+export REPO=$1
+export OUTPUT=$2
 
-if [ $# -ne 1 ]; then
-    echo "Specify folder where scan-build.sh results are"
+if [ $# -ne 2 ]; then
+    echo "Specify '{owner}/{repo}' and folder where scan-build.sh results are"
     exit 1
 fi
 

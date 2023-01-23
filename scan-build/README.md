@@ -29,7 +29,20 @@ Given a folder containing scan-build.sh results convert the HTML and cognitive c
 
 Input:
 ```
-$1: Folder containing scan-build.sh output (ie. {owner}.{repo})
+$1: Repo (ie. {owner}/{repo})
+$2: Folder containing scan-build.sh output (ie. {owner}.{repo})
 ```
 
 The resulting JSON will be placed in the input folder as `result.json`.
+
+### Build it:
+
+```
+docker build . -f scan-build/Dockerfile -t scan-build
+```
+
+### Run it:
+
+```
+docker run -v $WORKDIR:/work scan-build "owner/repo"
+```
