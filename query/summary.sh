@@ -9,8 +9,8 @@ decompress() {
 }
 
 summarize() {
-          bugs=$(find $ARTIFACT_DIR -type f -name 'result.json' -type f -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
-          complex_functions=$(find $ARTIFACT_DIR -type f -name 'result.json' -type f -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
+          bugs=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -type f -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
+          complex_functions=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -type f -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
           bugs=$(( bugs - complex_functions ))
 
           echo "### Total number of bugs found: ${bugs}" >> summary.md
@@ -18,7 +18,7 @@ summarize() {
 
           JSON="{\"bugs\": $bugs, "
 
-          for f in $(find $ARTIFACT_DIR -type f -name 'result.json'); do
+          for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
             if [ $(jq '.bugs | length' $f) -eq 0 ]; then
                 jq -r '.repo' $f >> clean-repos.txt
             else
@@ -46,7 +46,7 @@ summarize() {
 
             JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
 
-            for r in $(grep -rl "$line" $ARTIFACT_DIR/*/result.json); do
+            for r in $(grep -rl "$line" $ARTIFACT_DIR/*/*.scan-build.json); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .category == \"$line\") ) | length" $r | wc -l)
 
@@ -79,7 +79,7 @@ summarize() {
 
             JSON+="{\"type\": \"$line\", \"count\": $c, \"repos\": ["
 
-            for r in $(grep -rl "$line" $ARTIFACT_DIR/*/result.json); do
+            for r in $(grep -rl "$line" $ARTIFACT_DIR/*/*.scan-build.json); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .type == \"$line\") ) | length" $r | wc -l)
 
@@ -118,7 +118,7 @@ create_table() {
           echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> summary.md
           echo "| ----------- | ----------- | --------- | ---------------------- |" >> summary.md
 
-          for f in $(find $ARTIFACT_DIR -type f -name 'result.json'); do
+          for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
             repo=$(jq -r '.repo' $f)
             srepo=$(echo $repo | tr '/' .)
 
@@ -145,11 +145,12 @@ create_table() {
 
 aggregate() {
     mkdir -p $ARTIFACT_DIR/aggregate-results
-    for f in $(find $ARTIFACT_DIR -type f -name 'result.json'); do
-        repo=$(jq -r '.repo' $f)
-        srepo=$(echo $repo | tr '/' .)
-        cp $f $ARTIFACT_DIR/aggregate-results/$srepo.scan-build.json || :
-        cp $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json $ARTIFACT_DIR/aggregate-results/ || :
+    for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
+        cp $f $ARTIFACT_DIR/aggregate-results/ || :
+    done
+
+    for f in $(find $ARTIFACT_DIR -type f -name '*.ossf-scorecard.json'); do
+        cp $f $ARTIFACT_DIR/aggregate-results/ || :
     done
 
     tar -C $ARTIFACT_DIR/aggregate-results -czvf all-results.tar.gz .

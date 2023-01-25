@@ -1,6 +1,7 @@
 #!/bin/bash
 export REPO=$1
 export OUTPUT=$2
+export SREPO=$(echo $REPO | tr '/' .)
 
 if [ $# -ne 2 ]; then
     echo "Specify '{owner}/{repo}' and folder where scan-build.sh results are"
@@ -90,14 +91,14 @@ generate_json() {
           JSON+="]"
           JSON+="}"
 
-          echo $JSON > $OUTPUT/result.json
+          echo $JSON > $OUTPUT/$SREPO.scan-build.json
 
           if [ $bugfound -eq 0 ]; then
             exit 0
           fi
 
-          jq '.bugs[].category' $OUTPUT/result.json | sort | uniq -c > $OUTPUT/bug-categories.txt
-          jq '.bugs[].type' $OUTPUT/result.json | sort | uniq -c > $OUTPUT/bug-types.txt
+          jq '.bugs[].category' $OUTPUT/$SREPO.scan-build.json | sort | uniq -c > $OUTPUT/bug-categories.txt
+          jq '.bugs[].type' $OUTPUT/$SREPO.scan-build.json | sort | uniq -c > $OUTPUT/bug-types.txt
 
           JSON="${JSON%?}" # Remove last "}"
           JSON+=","
@@ -123,7 +124,7 @@ generate_json() {
 
           JSON="${JSON%?}" # Remove last ","
           JSON+="]}"
-          echo $JSON > $OUTPUT/result.json
+          echo $JSON > $OUTPUT/$SREPO.scan-build.json
 }
 
 ######

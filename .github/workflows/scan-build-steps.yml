@@ -66,8 +66,8 @@ jobs:
         env:
           SREPO: ${{ steps.vars.outputs.SREPO }}
         run: |
-          bugs=$(jq '.bugs | length' $SREPO/result.json)
-          functions=$(jq '.functions | length' $SREPO/result.json)
+          bugs=$(jq '.bugs | length' $SREPO/$SREPO.scan-build.json)
+          functions=$(jq '.functions | length' $SREPO/$SREPO.scan-build.json)
 
           [[ ${bugs} -eq 0 ]] && exit 0
 
@@ -76,11 +76,11 @@ jobs:
           echo "#### Bug categories" >> $SREPO/summary.md
           echo "| Category | Count |" >> $SREPO/summary.md
           echo "| --- | --- |" >> $SREPO/summary.md
-          jq '.categories[] | "| \(.category) | \(.count) |"' $SREPO/result.json | tr -d '"' >> $SREPO/summary.md
+          jq '.categories[] | "| \(.category) | \(.count) |"' $SREPO/$SREPO.scan-build.json | tr -d '"' >> $SREPO/summary.md
           echo "#### Bug types" >> $SREPO/summary.md
           echo "| Type | Count |" >> $SREPO/summary.md
           echo "| --- | --- |" >> $SREPO/summary.md
-          jq '.types[] | "| \(.type) | \(.count) |"' $SREPO/result.json | tr -d '"' >> $SREPO/summary.md
+          jq '.types[] | "| \(.type) | \(.count) |"' $SREPO/$SREPO.scan-build.json | tr -d '"' >> $SREPO/summary.md
 
           cat $SREPO/summary.md >> $GITHUB_STEP_SUMMARY
 

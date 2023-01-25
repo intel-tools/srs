@@ -33,7 +33,7 @@ $1: Repo (ie. {owner}/{repo})
 $2: Folder containing scan-build.sh output (ie. {owner}.{repo})
 ```
 
-The resulting JSON will be placed in the input folder as `result.json`.
+The resulting JSON will be placed in the input folder as `{owner}.{repo}.scan-build.json`.
 
 ### Build it:
 
