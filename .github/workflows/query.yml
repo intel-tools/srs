@@ -22,15 +22,29 @@ jobs:
           && sudo apt-get update \
           && sudo apt-get install gh -y
 
-      - name: set search term
+      - name: set search terms
         env:
           DEFAULT: "archived:false language:c language:c++ org:intel"
-          #DEFAULT: "archived:false language:c language:c++"
+          MINSTARS: 1 # below this will be skipped
+          MAXSTARS: 4000 # above this will be grabbed in a single loop, needs to be <=1000 results
+          INCREMENT: 200 # size to group search loop into
         id: set
         run: |
           search=${{ github.event.client_payload.slash_command.args.named.search }}
           [[ -z $search ]] && search="$DEFAULT"
           echo search="$search" >> $GITHUB_OUTPUT
+
+          minstars=${{ github.event.client_payload.slash_command.args.named.minstars }}
+          [[ -z $minstars ]] && minstars="$MINSTARS"
+          echo minstars="$minstars" >> $GITHUB_OUTPUT
+
+          maxstars=${{ github.event.client_payload.slash_command.args.named.maxstars }}
+          [[ -z $maxstars ]] && maxstars="$MAXSTARS"
+          echo maxstars="$maxstars" >> $GITHUB_OUTPUT
+
+          increment=${{ github.event.client_payload.slash_command.args.named.increment }}
+          [[ -z $increment ]] && increment="$INCREMENT"
+          echo increment="$increment" >> $GITHUB_OUTPUT
 
       - name: checkout repo
         uses: actions/checkout@v3
@@ -38,15 +52,15 @@ jobs:
       - name: execute search
         env:
           SEARCH: ${{ steps.set.outputs.search }}
-          MINSTARS: 1 # below this will be skipped
-          MAXSTARS: 4000 # above this will be grabbed in a single loop, needs to be <=1000 results
-          INCREMENT: 200 # size to group search loop into
+          MINSTARS: ${{ steps.set.outputs.minstars }}
+          MAXSTARS: ${{ steps.set.outputs.maxstars }}
+          INCREMENT: ${{ steps.set.outputs.increment }}
         run: |
           ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
 
           count=$(jq '.repos | length' repos.json)
 
-          echo "Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> summary.md
+          echo "Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> query-summary.md
 
       - name: filter by build system
         id: json
@@ -55,16 +69,16 @@ jobs:
           echo "${JSON}" > filtered-repos.json
           COUNT=$(jq '. | length' filtered-repos.json)
 
-          echo "Repositories with supported build systems: $COUNT" >> summary.md
+          echo "Repositories with supported build systems: $COUNT" >> query-summary.md
           echo json=$JSON >> $GITHUB_OUTPUT
 
       - name: record run id
         run: |
-          echo "Github Actions Run ID: ${{ github.run_id }}" >> summary.md
+          echo "Github Actions Run ID: ${{ github.run_id }}" >> query-summary.md
           echo "---" >> summary.md
 
       - name: Github step summary
-        run: cat summary.md >> $GITHUB_STEP_SUMMARY
+        run: cat query-summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: Create comment
         uses: peter-evans/create-or-update-comment@v2
@@ -72,17 +86,17 @@ jobs:
         with:
           token: ${{ secrets.GHPAT }}
           issue-number: ${{ github.event.pull_request.number }}
-          body-file: summary.md
+          body-file: query-summary.md
 
       - name: save results
         uses: actions/upload-artifact@v3
         with:
           retention-days: 90
-          name: repo-artifacts
+          name: query-repositories
           path: |
             repos.json
             filtered-repos.json
-            summary.md
+            query-summary.md
 
   scan-build:
     needs: query-repositories
