@@ -126,6 +126,7 @@ jobs:
           retention-days: 90
           name: aggregate-results
           path: |
-            aggregate-results.json
+            bug_breakdown.json
             score_vs_bugs.csv
             summary.md
+            all-results.tar.gz

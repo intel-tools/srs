@@ -38,16 +38,22 @@ summarize() {
 
           JSON+="\"categories\": ["
           while read -r line; do
-            c=$(grep "$line" aggregate-bug-categories.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+            c=$(grep "$line," aggregate-bug-categories.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+
             echo "##### $line: $c" >> summary.md
+            echo "| Repo        | Bug count   |" >> summary.md
+            echo "| ----------- | ----------- |" >> summary.md
+
             JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
 
             for r in $(grep -rl "$line" $ARTIFACT_DIR/*/result.json); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .category == \"$line\") ) | length" $r | wc -l)
 
-              JSON+="{\"repo\": \"$repo\", \"count\": $count},"
-              echo "$repo ($count)" >> summary.md
+              if [ $count -gt 0 ]; then
+                JSON+="{\"repo\": \"$repo\", \"count\": $count},"
+                echo "| $repo | $count |" >> summary.md
+              fi
             done
             JSON="${JSON%?}" # Remove last ","
             JSON+="]},"
@@ -64,16 +70,23 @@ summarize() {
 
           JSON+="\"types\": ["
           while read -r line; do
-            c=$(grep "$line" aggregate-bug-types.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+            c=$(grep "$line," aggregate-bug-types.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+
             echo "##### $line: $c" >> summary.md
+            echo "| Repo        | Bug count   |" >> summary.md
+            echo "| ----------- | ----------- |" >> summary.md
+
+
             JSON+="{\"type\": \"$line\", \"count\": $c, \"repo\": ["
 
             for r in $(grep -rl "$line" $ARTIFACT_DIR/*/result.json); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .type == \"$line\") ) | length" $r | wc -l)
 
-              JSON+="{\"repo\": \"$repo\", \"count\": $count},"
-              echo "$repo ($count)" >> summary.md
+              if [ $count -gt 0 ]; then
+                JSON+="{\"repo\": \"$repo\", \"count\": $count},"
+                echo "| $repo | $count |" >> summary.md
+              fi
             done
             JSON="${JSON%?}" # Remove last ","
             JSON+="]},"
@@ -81,12 +94,11 @@ summarize() {
             echo "" >> summary.md
             echo "***" >> summary.md
             echo "" >> summary.md
-
           done < bug-types.txt
           JSON="${JSON%?}" # Remove last ","
           JSON+="]}"
 
-          echo $JSON | jq '.' > aggregate-results.json
+          echo $JSON | jq '.' > bug_breakdown.json
 
           echo "" >> summary.md
           echo "***" >> summary.md
@@ -99,6 +111,8 @@ summarize() {
 
 create_table() {
           touch score_vs_bugs.csv
+
+          echo "" >> summary.md
           echo "### Breakdown" >> summary.md
 
           echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> summary.md
@@ -106,12 +120,12 @@ create_table() {
 
           for f in $(find $ARTIFACT_DIR -type f -name 'result.json'); do
             repo=$(jq -r '.repo' $f)
+            srepo=$(echo $repo | tr '/' .)
 
             if [ ! -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
                 continue
             fi
 
-            srepo=$(echo $repo | tr '/' .)
             functions=$(jq '.functions' $f)
             complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $f | wc -l)
             bugs=$(jq '.bugs | length' $f)
@@ -129,8 +143,21 @@ create_table() {
           done
 }
 
+aggregate() {
+    mkdir -p $ARTIFACT_DIR/aggregate-results
+    for f in $(find $ARTIFACT_DIR -type f -name 'result.json'); do
+        repo=$(jq -r '.repo' $f)
+        srepo=$(echo $repo | tr '/' .)
+        cp $f $ARTIFACT_DIR/aggregate-results/$srepo.scan-build.json || :
+        cp $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json $ARTIFACT_DIR/aggregate-results/ || :
+    done
+
+    tar -C $ARTIFACT_DIR/aggregate-results -czvf all-results.tar.gz .
+}
+
 ###############################
 
 decompress
 summarize
 create_table
+aggregate
