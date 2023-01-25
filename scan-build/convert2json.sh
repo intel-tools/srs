@@ -46,6 +46,7 @@ generate_json() {
             bugline=$(parse_info $f BUGLINE)
             bugdescription=$(parse_info $f BUGDESC)
             bugfunction=$(parse_info $f FUNCTIONNAME)
+            report=$(echo -n $f | sed "s/${OUTPUT}\/scan-build-result\///")
 
             JSON+="{"
             JSON+=" \"category\": \"$bugcategory\","
@@ -53,7 +54,8 @@ generate_json() {
             JSON+=" \"file\": \"$bugfile\","
             JSON+=" \"line\": $bugline,"
             JSON+=" \"function\": \"$bugfunction\","
-            JSON+=" \"description\": \"$bugdescription\""
+            JSON+=" \"description\": \"$bugdescription\","
+            JSON+=" \"report\": \"$report\""
             JSON+=" },"
           done
 
