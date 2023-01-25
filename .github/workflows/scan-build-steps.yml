@@ -48,7 +48,8 @@ jobs:
         run: docker load -i scan-build.tar
 
       - name: scan-build
-        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build "${{ inputs.repo }}"
+        timeout-minutes: 60
+        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build "${{ inputs.repo }}" "$LLVM_VERSION" "$TIMEOUT"
 
       - name: fix permissions
         if: ${{ always() }}
