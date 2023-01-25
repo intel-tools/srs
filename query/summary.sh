@@ -77,7 +77,7 @@ summarize() {
             echo "| ----------- | ----------- |" >> summary.md
 
 
-            JSON+="{\"type\": \"$line\", \"count\": $c, \"repo\": ["
+            JSON+="{\"type\": \"$line\", \"count\": $c, \"repos\": ["
 
             for r in $(grep -rl "$line" $ARTIFACT_DIR/*/result.json); do
               repo=$(jq -r '.repo' $r)
