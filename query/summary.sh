@@ -22,8 +22,8 @@ summarize() {
             if [ $(jq '.bugs | length' $f) -eq 0 ]; then
                 jq -r '.repo' $f >> clean-repos.txt
             else
-                jq -r '.types[] | "\(.type),\(.count)"' $f >> aggregate-bug-types.txt
-                jq -r '.categories[] | "\(.category),\(.count)"' $f >> aggregate-bug-categories.txt
+                jq -r '.types[] | ",\(.type),\(.count)"' $f >> aggregate-bug-types.txt
+                jq -r '.categories[] | ",\(.category),\(.count)"' $f >> aggregate-bug-categories.txt
             fi
           done
 
@@ -31,14 +31,14 @@ summarize() {
           echo "***" >> summary.md
           echo "" >> summary.md
 
-          cat aggregate-bug-categories.txt | awk -F',' '{ print $1 }' | sort -u > bug-categories.txt
-          cat aggregate-bug-types.txt | awk -F',' '{ print $1 }' | sort -u > bug-types.txt
+          cat aggregate-bug-categories.txt | awk -F',' '{ print $2 }' | sort -u > bug-categories.txt
+          cat aggregate-bug-types.txt | awk -F',' '{ print $2 }' | sort -u > bug-types.txt
 
           echo "#### Bug categories" >> summary.md
 
           JSON+="\"categories\": ["
           while read -r line; do
-            c=$(grep "$line," aggregate-bug-categories.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+            c=$(grep ",$line," aggregate-bug-categories.txt | awk -F ',' '{ sum += $3 } END { print sum }')
 
             echo "##### $line: $c" >> summary.md
             echo "| Repo        | Bug count   |" >> summary.md
@@ -70,7 +70,7 @@ summarize() {
 
           JSON+="\"types\": ["
           while read -r line; do
-            c=$(grep "$line," aggregate-bug-types.txt | awk -F ',' '{ sum += $2 } END { print sum }')
+            c=$(grep ",$line," aggregate-bug-types.txt | awk -F ',' '{ sum += $3 } END { print sum }')
 
             echo "##### $line: $c" >> summary.md
             echo "| Repo        | Bug count   |" >> summary.md
