@@ -45,7 +45,7 @@ jobs:
     steps:
       - name: Get input form slash-command
         if: github.event.client_payload.slash_command.args.named.repo != null
-        run: echo "[{\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"}] > json
+        run: echo "[{\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"}]" > json
 
       - name: Get input from query
         if: inputs.input != ''
