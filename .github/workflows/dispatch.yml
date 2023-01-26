@@ -10,6 +10,7 @@ jobs:
         uses: peter-evans/slash-command-dispatch@v3
         with:
           token: ${{ secrets.GHPAT }}
+          reaction-token: ${{ secrets.GHPAT }}
           commands: |
             srs
             scan-build
