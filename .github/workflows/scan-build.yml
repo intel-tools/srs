@@ -45,7 +45,18 @@ jobs:
     steps:
       - name: Get input form slash-command
         if: github.event.client_payload.slash_command.args.named.repo != null
-        run: echo "[{\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"}]" > json
+        id: vars
+        run: |
+          echo "[{\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"}]" > json
+          echo "run-url=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> $GITHUB_OUTPUT
+
+      - uses: peter-evans/create-or-update-comment@v2
+        if: github.event.client_payload.slash_command.args.named.repo != null
+        with:
+          token: ${{ secrets.GHPAT }}
+          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
+          body: |
+            [Command run output](${{ steps.vars.outputs.run-url }})
 
       - name: Get input from query
         if: inputs.input != ''
