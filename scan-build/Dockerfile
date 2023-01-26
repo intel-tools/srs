@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     autoconf autoconf-archive automake autopoint \
     meson ninja-build nasm yasm \
     cmake cmake-data cmake-extras \
-    gettext bison flex libtool \
+    gettext bison flex libtool libssl-dev \
     wget curl libz3-dev time jq tar \
     python3 libpython3-dev libboost-all-dev \
     gnupg lsb-release software-properties-common git \
