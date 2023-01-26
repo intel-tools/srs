@@ -11,5 +11,5 @@ jobs:
         with:
           token: ${{ secrets.GHPAT }}
           commands: |
-            query
+            srs
             scan-build

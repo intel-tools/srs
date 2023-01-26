@@ -1,9 +1,7 @@
 name: Perform various scans on the results of the query
 on:
   repository_dispatch:
-    types: [query-command]
-  pull_request:
-    branches: [ main ]
+    types: [srs-command]
 jobs:
   query-repositories:
     runs-on: ubuntu-latest
@@ -30,7 +28,7 @@ jobs:
           INCREMENT: 200 # size to group search loop into
         id: set
         run: |
-          search=${{ github.event.client_payload.slash_command.args.named.search }}
+          search="${{ github.event.client_payload.slash_command.args.named.search }}"
           [[ -z $search ]] && search="$DEFAULT"
           echo search="$search" >> $GITHUB_OUTPUT
 
