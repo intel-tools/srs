@@ -6,6 +6,11 @@ on:
         required: true
         default: ''
         type: string
+      comment-id:
+        description: 'comment-id'
+        required: false
+        default: ''
+        type: number
 jobs:
   scan-build:
     runs-on: ubuntu-latest
@@ -95,3 +100,12 @@ jobs:
           retention-days: 10
           name: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}
           path: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz
+
+      - name: Update comment
+        if: inputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v2
+        with:
+          token: ${{ secrets.GHPAT }}
+          comment-id: ${{ inputs.comment-id }}
+          body-file: ${{ steps.vars.outputs.SREPO }}/summary.md
+          reactions: hooray

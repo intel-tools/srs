@@ -47,7 +47,10 @@ jobs:
         if: github.event.client_payload.slash_command.args.named.repo != null
         id: vars
         run: |
-          echo "[{\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"}]" > json
+          echo "[{" > json
+          echo "\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"," > json
+          echo "\"comment-id\": ${{ github.event.client_payload.github.payload.comment.id }}" >> json
+          echo "}]" >> json
           echo "run-url=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> $GITHUB_OUTPUT
 
       - uses: peter-evans/create-or-update-comment@v2
@@ -82,6 +85,7 @@ jobs:
     uses: ./.github/workflows/scan-build-steps.yml
     with:
       repo: ${{ matrix.repo }}
+      comment-id: ${{ matrix.comment-id }}
 
   m2:
     needs: [prepare-docker, split]
