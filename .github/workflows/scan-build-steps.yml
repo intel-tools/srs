@@ -10,7 +10,7 @@ on:
         description: 'comment-id'
         required: false
         default: ''
-        type: number
+        type: string
 jobs:
   scan-build:
     runs-on: ubuntu-latest
