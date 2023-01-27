@@ -91,7 +91,7 @@ jobs:
 
       - name: compress result
         if: ${{ always() }}
-        run: tar -czvf ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz --remove-files ${{ steps.vars.outputs.SREPO }}
+        run: tar -czvf ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz ${{ steps.vars.outputs.SREPO }}
 
       - name: save results
         if: ${{ always() }}
