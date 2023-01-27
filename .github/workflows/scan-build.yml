@@ -8,6 +8,9 @@ on:
         required: true
         default: ''
         type: string
+    secrets:
+      GHPAT:
+        required: true
 jobs:
   prepare-docker:
     runs-on: ubuntu-latest
@@ -79,6 +82,7 @@ jobs:
   m1:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix1 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix1)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -90,6 +94,7 @@ jobs:
   m2:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix2 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix2)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -100,6 +105,7 @@ jobs:
   m3:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix3 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix3)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -110,6 +116,7 @@ jobs:
   m4:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix4 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix4)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -120,6 +127,7 @@ jobs:
   m5:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix5 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix5)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -130,6 +138,7 @@ jobs:
   m6:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix6 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix6)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -140,6 +149,7 @@ jobs:
   m7:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix7 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix7)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -150,6 +160,7 @@ jobs:
   m8:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix8 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix8)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -160,6 +171,7 @@ jobs:
   m9:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix9 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix9)}}
       fail-fast: false # don't stop other jobs if one fails
@@ -170,13 +182,10 @@ jobs:
   m10:
     needs: [prepare-docker, split]
     if: needs.split.outputs.matrix10 != null
+    secrets: inherit
     strategy:
       matrix: ${{fromJson(needs.split.outputs.matrix10)}}
       fail-fast: false # don't stop other jobs if one fails
     uses: ./.github/workflows/scan-build-steps.yml
     with:
       repo: ${{ matrix.repo }}
-
-
-
-

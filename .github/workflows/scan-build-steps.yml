@@ -11,6 +11,9 @@ on:
         required: false
         default: ''
         type: string
+    secrets:
+      GHPAT:
+        required: true
 jobs:
   scan-build:
     runs-on: ubuntu-latest
