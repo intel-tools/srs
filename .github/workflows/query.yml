@@ -8,6 +8,8 @@ jobs:
     outputs:
       json: ${{ steps.json.outputs.json }}
       comment-id: ${{ steps.comment.outputs.comment-id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: install dependencies
         run: |
@@ -113,6 +115,8 @@ jobs:
     needs: [query-repositories, scan-build, ossf-scorecard]
     if: ${{ always() }}
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
