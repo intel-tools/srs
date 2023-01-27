@@ -9,7 +9,7 @@ jobs:
       json: ${{ steps.json.outputs.json }}
       comment-id: ${{ steps.comment.outputs.comment-id }}
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.GHPAT }}
     steps:
       - name: install dependencies
         run: |
@@ -46,6 +46,8 @@ jobs:
 
       - name: checkout repo
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GHPAT }}
 
       - name: execute search
         env:
@@ -116,10 +118,12 @@ jobs:
     if: ${{ always() }}
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.GHPAT }}
     steps:
       - name: checkout repo
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GHPAT }}
 
       - uses: actions/download-artifact@v3
 

@@ -6,12 +6,16 @@ on:
         required: true
         default: ''
         type: string
+    secrets:
+      GHPAT:
+        required: true
+
 jobs:
   ossf-scorecard:
     runs-on: ubuntu-latest
 
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.GHPAT }}
 
     steps:
       - name: generate save directory name
@@ -26,12 +30,14 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: ${{ inputs.repo }}
+          token: ${{ secrets.GHPAT }}
 
       - name: run OSFF scorecard
         uses: ossf/scorecard-action@v2.1.2
         with:
           results_file: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
           results_format: json
+          repo_token: ${{ secrets.GHPAT }}
           publish_results: false
 
       - name: check score and record summary

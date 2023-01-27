@@ -37,11 +37,14 @@ jobs:
 
       - name: checkout repo
         uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GHPAT }}
 
       - name: checkout repo
         uses: actions/checkout@v3
         with:
           repository: ${{ inputs.repo }}
+          token: ${{ secrets.GHPAT }}
           path: repo
 
       - name: Get docker
