@@ -100,6 +100,10 @@ execute_query() {
 
           }
 
+if [ $MAXSTARS -lt $MINSTARS ]; then
+    MAXSTARS=$MINSTARS
+fi
+
 for s in `seq $MINSTARS $INCREMENT $MAXSTARS`; do
     if [ $s -lt $MAXSTARS ]; then
         sp=$(( s + INCREMENT ))
