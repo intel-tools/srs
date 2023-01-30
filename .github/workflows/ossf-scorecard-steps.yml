@@ -6,6 +6,11 @@ on:
         required: true
         default: ''
         type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
     secrets:
       GHPAT:
         required: true
@@ -14,10 +19,19 @@ jobs:
   ossf-scorecard:
     runs-on: ubuntu-latest
 
-    env:
-      GH_TOKEN: ${{ secrets.GHPAT }}
-
     steps:
+      - name: rate limit
+        env:
+          GHPAT: ${{ secrets.GHPAT }}
+        run: |
+          rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+          echo "Rate limit remaining: $rl"
+          while [ $rl -lt ${{ inputs.rate-limit }} ]; do
+            sleep 1h
+            rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+            echo "Rate limit remaining: $rl"
+          done
+
       - name: generate save directory name
         shell: bash
         id: vars
