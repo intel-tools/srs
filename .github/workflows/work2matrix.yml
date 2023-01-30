@@ -8,14 +8,36 @@ on:
         type: string
     outputs:
       matrix1:
-        description: "JSON array of max 256 inputs, base64 encoded"
+        description: "JSON array of max 256 inputs"
         value: ${{ jobs.create-build-matrix.outputs.matrix1 }}
       matrix2:
-        description: "JSON array of max 256 inputs, base64 encoded"
+        description: "JSON array of max 256 inputs"
         value: ${{ jobs.create-build-matrix.outputs.matrix2 }}
       matrix3:
-        description: "JSON array of max 256 inputs, base64 encoded"
+        description: "JSON array of max 256 inputs"
         value: ${{ jobs.create-build-matrix.outputs.matrix3 }}
+      matrix4:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix4 }}
+      matrix5:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix5 }}
+      matrix6:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix6 }}
+      matrix7:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix7 }}
+      matrix8:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix8 }}
+      matrix9:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix9 }}
+      matrix10:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix10 }}
+
 jobs:
   create-build-matrix:
     runs-on: ubuntu-latest
