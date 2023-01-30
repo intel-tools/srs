@@ -60,7 +60,8 @@ jobs:
 
           count=$(jq '.repos | length' repos.json)
 
-          echo "Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> query-summary.md
+          echo "---" >> query-summary.md
+          echo "## Repositories matching search query '${SEARCH} stars:>=$MINSTARS': $count" >> query-summary.md
 
       - name: filter by build system
         id: json
@@ -69,7 +70,7 @@ jobs:
           echo "${JSON}" > filtered-repos.json
           COUNT=$(jq '. | length' filtered-repos.json)
 
-          echo "Repositories with supported build systems: $COUNT" >> query-summary.md
+          echo "## Repositories with supported build systems: $COUNT" >> query-summary.md
           echo json=$JSON >> $GITHUB_OUTPUT
 
       - name: record run id
