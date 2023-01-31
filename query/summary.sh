@@ -9,10 +9,20 @@ decompress() {
 }
 
 summarize() {
-          bugs=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -type f -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
-          complex_functions=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -type f -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
+          built=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json')
+          scored=$(find $ARTIFACT_DIR -type f -name '*.ossf-scorecard.json')
+          bugs=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
+          complex_functions=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
           bugs=$(( bugs - complex_functions ))
 
+          echo "" >> summary.md
+          echo "***" >> summary.md
+          echo "" >> summary.md
+          echo "### Repositories built with scan-build: ${built}" >> summary.md
+          echo "### Repositories scored with OSSF scorecard: ${scored}" >> summary.md
+          echo "" >> summary.md
+          echo "***" >> summary.md
+          echo "" >> summary.md
           echo "### Total number of bugs found: ${bugs}" >> summary.md
           echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> summary.md
 
@@ -115,23 +125,23 @@ create_table() {
           echo "" >> summary.md
           echo "### Breakdown" >> summary.md
 
-          echo "| Repo        | OSSF score  | Bugs      | Cognitive complexity   |" >> summary.md
-          echo "| ----------- | ----------- | --------- | ---------------------- |" >> summary.md
+          echo "| Repo        | OSSF score  | Bugs      | High cognitive complexity functions / Total functions   |" >> summary.md
+          echo "| ----------- | ----------- | --------- | ------------------------------------------------------- |" >> summary.md
 
           for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
             repo=$(jq -r '.repo' $f)
             srepo=$(echo $repo | tr '/' .)
-
-            if [ ! -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
-                continue
-            fi
 
             functions=$(jq '.functions' $f)
             complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $f | wc -l)
             bugs=$(jq '.bugs | length' $f)
             bugs=$(( bugs - complex_functions ))
 
-            score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
+            if [ ! -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
+                score="-1"
+            else
+                score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
+            fi
 
             echo "| $repo | $score | $bugs | $complex_functions / $functions |" >> summary.md
 
