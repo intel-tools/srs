@@ -1,8 +1,9 @@
 #!/bin/bash
-SEARCH=${1:-""}
+SEARCH=${1:-"archived:false language:c language:c++"}
 MINSTARS=${2:-1000} # Starting range, no results from below this
-MAXSTARS=${3:-10000} # Stops splitting search above this, will have results above this
+MAXSTARS=${3:-10000} # Stop when reached
 INCREMENT=${4:-300} # Group size to split search into
+ABOVEMAX=${5:-1} # Include results above MAXSTARS in a single query
 
 # Github search is limited to return 1000 results at most
 # even if the repositoryCount returns total number of matches (may also be limited to 4000).
@@ -109,6 +110,8 @@ for s in `seq $MINSTARS $INCREMENT $MAXSTARS`; do
         sp=$(( s + INCREMENT ))
         q="$SEARCH stars:$s..$sp"
     else
+        [[ $ABOVEMAX -eq 0 ]] && exit 0
+
         q="$SEARCH stars:>=$MAXSTARS"
     fi
 

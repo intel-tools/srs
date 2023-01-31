@@ -24,8 +24,9 @@ jobs:
         env:
           DEFAULT: "archived:false language:c language:c++ org:intel"
           MINSTARS: 1 # below this will be skipped
-          MAXSTARS: 4000 # above this will be grabbed in a single loop, needs to be <=1000 results
-          INCREMENT: 200 # size to group search loop into
+          MAXSTARS: 4000 # stop when reached
+          ABOVEMAX: 1 # include results above MAXSTARS in a single query, needs to be <=1000 results
+          INCREMENT: 200 # size to group search loop into for range between MINSTARS..MAXSTARS
         id: set
         run: |
           search="${{ github.event.client_payload.slash_command.args.named.search }}"
@@ -44,6 +45,10 @@ jobs:
           [[ -z $increment ]] && increment="$INCREMENT"
           echo increment="$increment" >> $GITHUB_OUTPUT
 
+          abovemax=${{ github.event.client_payload.slash_command.args.named.abovemax }}
+          [[ -z $abovemax ]] && abovemax="$ABOVEMAX"
+          echo abovemax="$abovemax" >> $GITHUB_OUTPUT
+
       - name: checkout repo
         uses: actions/checkout@v3
         with:
@@ -55,8 +60,9 @@ jobs:
           MINSTARS: ${{ steps.set.outputs.minstars }}
           MAXSTARS: ${{ steps.set.outputs.maxstars }}
           INCREMENT: ${{ steps.set.outputs.increment }}
+          ABOVEMAX: ${{ steps.set.outputs.abovemax }}
         run: |
-          ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT
+          ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT $ABOVEMAX
 
           count=$(jq '.repos | length' repos.json)
 
