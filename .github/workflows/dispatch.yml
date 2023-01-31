@@ -9,8 +9,8 @@ jobs:
       - name: Slash Command Dispatch
         uses: peter-evans/slash-command-dispatch@v3
         with:
-          token: ${{ secrets.GHPAT }}
-          reaction-token: ${{ secrets.GHPAT }}
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          reaction-token: ${{ secrets.DISPATCH_TOKEN }}
           commands: |
             srs
             scan-build
