@@ -158,3 +158,46 @@ jobs:
             score_vs_bugs.csv
             summary.md
             all-results.tar.gz
+
+      - name: save scan results to gh pages
+        run: |
+          git config --global user.name ${{ github.actor }}
+          git config --global user.email '${{ github.actor }}@github.com'
+          git checkout gh-pages
+
+          cd=$(date +"%Y.%m.%d")
+          year=$(date +"%Y")
+          d="$cd-${{ github.run_id }}"
+          bugs=$(jq '.bugs' bug_breakdown.json)
+
+          mkdir -p scans/$d
+
+          cp query-repositories/filtered-repos.json scans/$d
+          cp all-results.tar.gz scans/$d
+          cp bug_breakdown.json scans/$d
+          cp score_vs_bugs.csv scans/$d
+
+          echo "---" > scans/$d/index.md
+          echo "layout: default" >> scans/$d/index.md
+          echo "---" >> scans/$d/index.md
+          echo "" >> scans/$d/index.md
+
+          echo "## Scan date: $cd" >> scans/$d/index.md
+          echo "[All results (tar.gz)](./scans/$d/all-results.tar.gz) [Repo list (JSON)](./scans/$d/filtered-repos.json) [Bug breakdown (JSON)](./scans/$d/bug_breakdown.json) [Score vs Bugs (CSV)](./scans/$d/score_vs_bugs.csv)" >> scans/$d/index.md
+
+          echo "" >> scans/$d/index.md
+          echo "***" >> scans/$d/index.md
+          echo "" >> scans/$d/index.md
+
+          cat query-repositories/query-summary.md >> scans/$d/index.md
+          cat summary.md >> scans/$d/index.md
+
+          echo "[back](./)" >> scans/$d/index.md
+
+          echo "$d,$cd,$year,$bugs" >> _data/scans.csv
+
+          git add scans/$d
+          git add _data/scans.csv
+
+          git commit -m "Add scan results of date $d"
+          git push
