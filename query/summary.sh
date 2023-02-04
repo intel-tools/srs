@@ -9,8 +9,8 @@ decompress() {
 }
 
 summarize() {
-          built=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json')
-          scored=$(find $ARTIFACT_DIR -type f -name '*.ossf-scorecard.json')
+          built=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' | wc -l)
+          scored=$(find $ARTIFACT_DIR -type f -name '*.ossf-scorecard.json' | wc -l)
           bugs=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
           complex_functions=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
           bugs=$(( bugs - complex_functions ))
