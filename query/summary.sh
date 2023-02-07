@@ -116,7 +116,12 @@ summarize() {
 
           clean_repos=$(cat clean-repos.txt | wc -l)
           echo "### Repositories with no bugs: ${clean_repos}" >> summary.md
-          cat clean-repos.txt >> summary.md
+          echo "" >> summary.md
+          echo "| Repo |" >> summary.md
+          echo "| ---- |" >> summary.md
+          while read -r repo; do
+            echo "| $repo |"  >> summary.md
+          done < clean-repos.txt
 }
 
 create_table() {
