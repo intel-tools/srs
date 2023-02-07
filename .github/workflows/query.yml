@@ -190,7 +190,7 @@ jobs:
           echo "" >> scans/$d/index.md
 
           echo "## Scan date: $cd" >> scans/$d/index.md
-          echo "[All results (tar.gz)](./scans/$d/all-results.tar.gz) [Repo list (JSON)](./scans/$d/filtered-repos.json) [Bug breakdown (JSON)](./scans/$d/bug_breakdown.json) [Score vs Bugs (CSV)](./scans/$d/score_vs_bugs.csv)" >> scans/$d/index.md
+          echo "[All results (tar.gz)](./all-results.tar.gz) [Repo list (JSON)](./filtered-repos.json) [Bug breakdown (JSON)](./bug_breakdown.json) [Score vs Bugs (CSV)](./score_vs_bugs.csv)" >> scans/$d/index.md
 
           echo "" >> scans/$d/index.md
           echo "***" >> scans/$d/index.md
