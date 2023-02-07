@@ -131,6 +131,12 @@ jobs:
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GHPAT }}
+          ref: gh-pages
+
+      - name: overlay query folder
+        run: |
+          git fetch origin main --depth 1
+          git checkout origin/main --no-overlay -- query
 
       - uses: actions/download-artifact@v3
 
@@ -163,7 +169,6 @@ jobs:
         run: |
           git config --global user.name ${{ github.actor }}
           git config --global user.email '${{ github.actor }}@github.com'
-          git checkout gh-pages
 
           cd=$(date +"%Y.%m.%d")
           year=$(date +"%Y")
