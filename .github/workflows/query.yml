@@ -199,7 +199,7 @@ jobs:
           cat query-repositories/query-summary.md >> scans/$d/index.md
           cat summary.md >> scans/$d/index.md
 
-          echo "[back](./)" >> scans/$d/index.md
+          echo "[back](../..)" >> scans/$d/index.md
 
           echo "$d,$cd,$year,$bugs" >> _data/scans.csv
 
