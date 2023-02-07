@@ -167,6 +167,8 @@ jobs:
 
       - name: save scan results to gh pages
         run: |
+          rm -rf query
+
           git config --global user.name ${{ github.actor }}
           git config --global user.email '${{ github.actor }}@github.com'
 
