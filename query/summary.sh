@@ -142,8 +142,6 @@ summarize() {
 }
 
 create_table() {
-          touch score_vs_bugs.csv
-
           echo "" >> summary.md
           echo "### Breakdown" >> summary.md
 
@@ -174,6 +172,7 @@ create_table() {
 
           sort -k 2 -n -r s.tmp > s2.tmp
 
+          echo "repo, bugs, ossf score, complex functions, total functions" > score_vs_bugs.csv
           count=1
           while read -r repo bugs score functions complex_functions; do
             echo "| $count | $repo | $bugs | $score | $complex_functions / $functions |" >> summary.md
