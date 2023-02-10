@@ -28,7 +28,7 @@ fi
 parse_info() {
   local f=$1
   local d=$2
-  grep $d $f | awk -F "$d " '{ print $2 }' | rev | cut -c5- | rev
+  grep $d $f | awk -F "$d " '{ print $2 }' | rev | cut -c5- | rev | tr '"' "'"
 }
 
 generate_json() {
