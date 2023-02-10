@@ -56,15 +56,23 @@ summarize() {
 
             JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
 
+            rm s.tmp || :
             for r in $(grep -rl "$line" $ARTIFACT_DIR/*/*.scan-build.json); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .category == \"$line\") ) | length" $r | wc -l)
 
               if [ $count -gt 0 ]; then
-                JSON+="{\"repo\": \"$repo\", \"count\": $count},"
-                echo "| $repo | $count |" >> summary.md
+                echo "$repo $count" >> s.tmp
               fi
             done
+
+            sort -k 2 -n -r s.tmp > s2.tmp
+
+            while read -r r c; do
+                JSON+="{\"repo\": \"$r\", \"count\": $c},"
+                echo "| $r | $c |" >> summary.md
+            done < s2.tmp
+
             JSON="${JSON%?}" # Remove last ","
             JSON+="]},"
 
@@ -86,18 +94,25 @@ summarize() {
             echo "| Repo        | Bug count   |" >> summary.md
             echo "| ----------- | ----------- |" >> summary.md
 
-
-            JSON+="{\"type\": \"$line\", \"count\": $c, \"repos\": ["
-
+            rm s.tmp || :
             for r in $(grep -rl "$line" $ARTIFACT_DIR/*/*.scan-build.json); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .type == \"$line\") ) | length" $r | wc -l)
 
               if [ $count -gt 0 ]; then
-                JSON+="{\"repo\": \"$repo\", \"count\": $count},"
-                echo "| $repo | $count |" >> summary.md
+                echo "$repo $count" >> s.tmp
               fi
             done
+
+            sort -k 2 -n -r s.tmp > s2.tmp
+
+            JSON+="{\"type\": \"$line\", \"count\": $c, \"repos\": ["
+
+            while read -r r c; do
+                JSON+="{\"repo\": \"$r\", \"count\": $c},"
+                echo "| $r | $c |" >> summary.md
+            done < s2.tmp
+
             JSON="${JSON%?}" # Remove last ","
             JSON+="]},"
 
@@ -107,6 +122,8 @@ summarize() {
           done < bug-types.txt
           JSON="${JSON%?}" # Remove last ","
           JSON+="]}"
+
+          echo $JSON
 
           echo $JSON | jq '.' > bug_breakdown.json
 
@@ -130,8 +147,8 @@ create_table() {
           echo "" >> summary.md
           echo "### Breakdown" >> summary.md
 
-          echo "| Repo        | OSSF score  | Bugs      | High cognitive complexity functions / Total functions   |" >> summary.md
-          echo "| ----------- | ----------- | --------- | ------------------------------------------------------- |" >> summary.md
+          echo "| #    | Repo        | Bugs       | OSSF score | High cognitive complexity functions / Total functions   |" >> summary.md
+          echo "| ---- | ----------- | ---------- | -------------------------------------------------------------------- |" >> summary.md
 
           for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
             repo=$(jq -r '.repo' $f)
@@ -148,14 +165,23 @@ create_table() {
                 score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
             fi
 
-            echo "| $repo | $score | $bugs | $complex_functions / $functions |" >> summary.md
-
             if [ ${score} != "-1" ] && [ $functions -gt 0 ]; then
-              echo "$repo,$score,$bugs,$functions,$complex_functions" >> score_vs_bugs.csv
+              echo "$repo $bugs $score $functions $complex_functions" >> s.tmp
             else
               echo "Repo $repo had a failed OSSF scorecard or clang-tidy scan ($score, $functions)"
             fi
           done
+
+          sort -k 2 -n -r s.tmp > s2.tmp
+
+          count=1
+          while read -r repo bugs score functions complex_functions; do
+            echo "| $count | $repo | $bugs | $score | $complex_functions / $functions |" >> summary.md
+            echo "$repo,$bugs,$score,$complex_functions,$functions" >> score_vs_bugs.csv
+            (( count++ ))
+          done < s2.tmp
+
+          rm *.tmp
 }
 
 aggregate() {
