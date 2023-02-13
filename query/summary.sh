@@ -146,7 +146,7 @@ create_table() {
           echo "### Breakdown" >> summary.md
 
           echo "| #    | Repo        | Bugs       | OSSF score | High cognitive complexity functions / Total functions   |" >> summary.md
-          echo "| ---- | ----------- | ---------- | -------------------------------------------------------------------- |" >> summary.md
+          echo "| ---- | ----------- | ---------- | ---------- | ------------------------------------------------------- |" >> summary.md
 
           for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
             repo=$(jq -r '.repo' $f)
