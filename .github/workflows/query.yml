@@ -120,8 +120,15 @@ jobs:
     with:
       input: ${{ needs.query-repositories.outputs.json }}
 
+  metadata:
+    needs: query-repositories
+    uses: ./.github/workflows/metadata.yml
+    secrets: inherit
+    with:
+      input: ${{ needs.query-repositories.outputs.json }}
+
   aggregate-results:
-    needs: [query-repositories, scan-build, ossf-scorecard]
+    needs: [query-repositories, scan-build, ossf-scorecard, metadata]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     env:

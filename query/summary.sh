@@ -193,6 +193,14 @@ aggregate() {
         cp $f $ARTIFACT_DIR/aggregate-results/ || :
     done
 
+    for f in $(find $ARTIFACT_DIR -type f -name '*.metadata.json'); do
+        cp $f $ARTIFACT_DIR/aggregate-results/ || :
+    done
+
+    for f in $(find $ARTIFACT_DIR -type f -name '*.cloc.json'); do
+        cp $f $ARTIFACT_DIR/aggregate-results/ || :
+    done
+
     tar -C $ARTIFACT_DIR/aggregate-results -czvf all-results.tar.gz .
 }
 
