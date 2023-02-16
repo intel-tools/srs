@@ -107,7 +107,7 @@ fi
 
 for s in `seq $MINSTARS $INCREMENT $MAXSTARS`; do
     if [ $s -lt $MAXSTARS ]; then
-        sp=$(( s + INCREMENT ))
+        sp=$(( s + INCREMENT - 1 ))
         q="$SEARCH stars:$s..$sp"
     else
         [[ $ABOVEMAX -eq 0 ]] && exit 0
