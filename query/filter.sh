@@ -4,8 +4,7 @@ REPOSJSON=${1:-"repos.json"}
 
 search() {
     BUILD=$1
-    jq ".repos[] | select( any(.; .repo.languages.nodes[].name == \"$BUILD\") )" $REPOSJSON | jq -r '.repo.nameWithOwner'
-    echo " "
+    jq ".repos[] | select( any(.; .repo.languages.nodes[].name == \"$BUILD\") )" $REPOSJSON | jq -r '.repo.nameWithOwner' >> matching-repos.txt
 }
 
 if [ ! -f $REPOSJSON ]; then
@@ -13,11 +12,13 @@ if [ ! -f $REPOSJSON ]; then
     exit 1
 fi
 
-REPOS=$(search M4)
-REPOS+=$(search CMake)
-REPOS+=$(search Meson)
+search M4
+search CMake
+search Meson
 
-REPOS=$(echo $REPOS | sort -u)
+REPOS=$(cat matching-repos.txt | sort -u)
+
+rm matchin-repos.txt
 
 JSON="["
 for repo in $REPOS; do
