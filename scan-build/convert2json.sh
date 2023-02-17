@@ -64,10 +64,10 @@ generate_json() {
             while read -r line; do
               bugtype="Cognitive complexity"
               bugcategory="Readability"
-              bugfile=$(echo $line | awk '{ print $1 }' | awk -F":" '{ print $1 }')
-              bugline=$(echo $line | awk '{ print $1 }' | awk -F":" '{ print $2 }')
-              bugfunction=$(echo $line | awk '{ print $4 }' | tr -d "'" )
-              bugdescription=$(echo $line | awk '{ print $9 }')
+              bugfile=$(echo $line | awk -F":" '{ print $1 }')
+              bugline=$(echo $line | awk -F":" '{ print $2 }')
+              bugfunction=$(echo $line | awk -F"function" '{ print $2 }' | awk '{ print $1 }' )
+              bugdescription=$(echo $line | awk -F"cognitive complexity of" '{ print $2 }' | awk '{ print $1 }')
 
               [[ $bugdescription -lt 25 ]] && continue
 
