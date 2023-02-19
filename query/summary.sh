@@ -8,7 +8,51 @@ decompress() {
     done
 }
 
-summarize() {
+create_table() {
+          echo "" > summary.md
+          echo "### Breakdown" >> summary.md
+
+          echo "| #    | Repo        | Bugs       | OSSF score | High cognitive complexity functions / Total functions   |" >> summary.md
+          echo "| ---- | ----------- | ---------- | ---------- | ------------------------------------------------------- |" >> summary.md
+
+          rm *.tmp || :
+
+          for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
+            repo=$(jq -r '.repo' $f)
+            srepo=$(echo $repo | tr '/' .)
+
+            functions=$(jq '.functions' $f)
+            complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $f | wc -l)
+            bugs=$(jq '.bugs | length' $f)
+            bugs=$(( bugs - complex_functions ))
+
+            if [ ! -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
+                score="-1"
+            else
+                score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
+            fi
+
+            if [ ${score} != "-1" ] && [ $functions -gt 0 ]; then
+              echo "$repo $bugs $score $functions $complex_functions" >> s.tmp
+            else
+              echo "Repo $repo had a failed OSSF scorecard or clang-tidy scan ($score, $functions)"
+            fi
+          done
+
+          sort -k 2 -n -r s.tmp > s2.tmp
+
+          echo "repo, bugs, ossf score, complex functions, total functions" > score_vs_bugs.csv
+          count=1
+          while read -r repo bugs score functions complex_functions; do
+            echo "| $count | [https://github.com/$repo](https://github.com/$repo) | [$bugs (report)](./$srepo/index.html) | $score | $complex_functions / $functions |" >> summary.md
+            echo "$repo,$bugs,$score,$complex_functions,$functions" >> score_vs_bugs.csv
+            (( count++ ))
+          done < s2.tmp
+
+          rm *.tmp || :
+}
+
+breakdown() {
           built=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' | wc -l)
           scored=$(find $ARTIFACT_DIR -type f -name '*.ossf-scorecard.json' | wc -l)
           bugs=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
@@ -27,6 +71,14 @@ summarize() {
           echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> summary.md
 
           JSON="{\"bugs\": $bugs, "
+
+          rm *.tmp
+          rm clean-repos.txt
+          rm aggregate-bug-types.txt
+          rm aggregate-bug-categories.txt
+          touch clean-repos.txt
+          touch aggregate-bug-types.txt
+          touch aggregate-bug-categories.txt
 
           for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
             if [ $(jq '.bugs | length' $f) -eq 0 ]; then
@@ -139,46 +191,6 @@ summarize() {
           while read -r repo; do
             echo "| $repo |"  >> summary.md
           done < clean-repos.txt
-}
-
-create_table() {
-          echo "" >> summary.md
-          echo "### Breakdown" >> summary.md
-
-          echo "| #    | Repo        | Bugs       | OSSF score | High cognitive complexity functions / Total functions   |" >> summary.md
-          echo "| ---- | ----------- | ---------- | ---------- | ------------------------------------------------------- |" >> summary.md
-
-          for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
-            repo=$(jq -r '.repo' $f)
-            srepo=$(echo $repo | tr '/' .)
-
-            functions=$(jq '.functions' $f)
-            complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $f | wc -l)
-            bugs=$(jq '.bugs | length' $f)
-            bugs=$(( bugs - complex_functions ))
-
-            if [ ! -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
-                score="-1"
-            else
-                score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
-            fi
-
-            if [ ${score} != "-1" ] && [ $functions -gt 0 ]; then
-              echo "$repo $bugs $score $functions $complex_functions" >> s.tmp
-            else
-              echo "Repo $repo had a failed OSSF scorecard or clang-tidy scan ($score, $functions)"
-            fi
-          done
-
-          sort -k 2 -n -r s.tmp > s2.tmp
-
-          echo "repo, bugs, ossf score, complex functions, total functions" > score_vs_bugs.csv
-          count=1
-          while read -r repo bugs score functions complex_functions; do
-            echo "| $count | $repo | $bugs | $score | $complex_functions / $functions |" >> summary.md
-            echo "$repo,$bugs,$score,$complex_functions,$functions" >> score_vs_bugs.csv
-            (( count++ ))
-          done < s2.tmp
 
           rm *.tmp
 }
@@ -204,9 +216,23 @@ aggregate() {
     tar -C $ARTIFACT_DIR/aggregate-results -czvf all-results.tar.gz .
 }
 
+collect_scan_reports() {
+    mkdir -p scan-build-reports
+
+    for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
+        repo=$(jq -r '.repo' $f)
+        srepo=$(echo $repo | tr '/' .)
+
+        mkdir -p scan-build-reports/$srepo
+
+        find $ARTIFACT_DIR/$srepo -type f -name '*.html' -exec mv {} scan-build-reports/$srepo \;
+    done
+}
+
 ###############################
 
 decompress
-summarize
 create_table
+breakdown
 aggregate
+collect_scan_reports
