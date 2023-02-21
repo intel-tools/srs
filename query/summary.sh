@@ -1,13 +1,6 @@
 #!/bin/bash
 ARTIFACT_DIR=${1:-"."}
 
-decompress() {
-    for f in $(find $ARTIFACT_DIR -type f -name '*.tar.gz'); do
-        echo "Extracting $f"
-        tar -xvf $f -C $ARTIFACT_DIR > /dev/null
-    done
-}
-
 create_table() {
           echo "" > summary.md
           echo "### Breakdown" >> summary.md
@@ -231,7 +224,6 @@ collect_scan_reports() {
 
 ###############################
 
-decompress
 create_table
 breakdown
 aggregate
