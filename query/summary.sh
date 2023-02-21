@@ -37,7 +37,7 @@ create_table() {
           echo "repo, bugs, ossf score, complex functions, total functions" > score_vs_bugs.csv
           count=1
           while read -r repo bugs score functions complex_functions; do
-            echo "| $count | [https://github.com/$repo](https://github.com/$repo) | [$bugs (report)](./$srepo/index.html) | $score | $complex_functions / $functions |" >> summary.md
+            echo "| $count | [https://github.com/$repo](https://github.com/$repo) | $bugs | $score | $complex_functions / $functions |" >> summary.md
             echo "$repo,$bugs,$score,$complex_functions,$functions" >> score_vs_bugs.csv
             (( count++ ))
           done < s2.tmp
@@ -209,22 +209,8 @@ aggregate() {
     tar -C $ARTIFACT_DIR/aggregate-results -czvf all-results.tar.gz .
 }
 
-collect_scan_reports() {
-    mkdir -p scan-build-reports
-
-    for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
-        repo=$(jq -r '.repo' $f)
-        srepo=$(echo $repo | tr '/' .)
-
-        mkdir -p scan-build-reports/$srepo
-
-        find $ARTIFACT_DIR/$srepo -type f -name '*.html' -exec mv {} scan-build-reports/$srepo \;
-    done
-}
-
 ###############################
 
 create_table
 breakdown
 aggregate
-collect_scan_reports

@@ -69,7 +69,6 @@ jobs:
           cp all-results.tar.gz scans/$d
           cp bug_breakdown.json scans/$d
           cp score_vs_bugs.csv scans/$d
-          mv scan-build-reports/* scans/$d
 
           echo "---" > scans/$d/index.md
           echo "layout: default" >> scans/$d/index.md

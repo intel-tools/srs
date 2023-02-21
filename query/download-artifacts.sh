@@ -57,7 +57,7 @@ for a in $(ls $RUN_ID/artifacts.*.json); do
         rm $RUN_ID/$name.zip
 
         if [ -f $RUN_ID/$name/$name.tar.gz ]; then
-            tar -xvf $RUN_ID/$name/$name.tar.gz -C $RUN_ID/$name --wildcards --no-anchored '*.html' '*.scan-build.json'
+            tar -xvf $RUN_ID/$name/$name.tar.gz -C $RUN_ID/$name --wildcards --no-anchored '*.scan-build.json'
             rm $RUN_ID/$name/$name.tar.gz
         fi
     done
