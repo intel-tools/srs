@@ -21,6 +21,9 @@ jobs:
         with:
           token: ${{ secrets.GHPAT }}
 
+      - name: free disk space
+        run: ./query/free-disk-space.sh
+
       - name: Download artifacts with rate limit
         run: ./query/download-artifacts.sh ${{ inputs.run-id }}
 
