@@ -37,7 +37,7 @@ create_table() {
           echo "repo, bugs, ossf score, complex functions, total functions" > score_vs_bugs.csv
           count=1
           while read -r repo bugs score functions complex_functions; do
-            echo "| $count | [https://github.com/$repo](https://github.com/$repo) | $bugs | $score | $complex_functions / $functions |" >> summary.md
+            echo "| $count | [$repo](https://github.com/$repo) | $bugs | $score | $complex_functions / $functions |" >> summary.md
             echo "$repo,$bugs,$score,$complex_functions,$functions" >> score_vs_bugs.csv
             (( count++ ))
           done < s2.tmp
