@@ -65,10 +65,10 @@ breakdown() {
 
           JSON="{\"bugs\": $bugs, "
 
-          rm *.tmp
-          rm clean-repos.txt
-          rm aggregate-bug-types.txt
-          rm aggregate-bug-categories.txt
+          rm *.tmp 2>/dev/null
+          rm clean-repos.txt 2>/dev/null
+          rm aggregate-bug-types.txt 2>/dev/null
+          rm aggregate-bug-categories.txt 2>/dev/null
           touch clean-repos.txt
           touch aggregate-bug-types.txt
           touch aggregate-bug-categories.txt
@@ -102,7 +102,7 @@ breakdown() {
             JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
 
             rm s.tmp || :
-            for r in $(grep -rl "$line" $ARTIFACT_DIR/*/*.scan-build.json); do
+            for r in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .category == \"$line\") ) | length" $r | wc -l)
 
@@ -140,7 +140,7 @@ breakdown() {
             echo "| ----------- | ----------- |" >> summary.md
 
             rm s.tmp || :
-            for r in $(grep -rl "$line" $ARTIFACT_DIR/*/*.scan-build.json); do
+            for r in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
               repo=$(jq -r '.repo' $r)
               count=$(jq ".bugs[] | select( any(.; .type == \"$line\") ) | length" $r | wc -l)
 
