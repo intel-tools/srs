@@ -1,0 +1,17 @@
+name: Trigger weekly scan
+
+on:
+  schedule:
+    # every sunday
+    - cron: '0 0 * * 0'
+jobs:
+  build:
+    name: Trigger Weekly scan
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GHPAT }}
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+
+      - run: gh workflow run query.yml -f search="archived:false language:c language:c++" -f minstars="800"
