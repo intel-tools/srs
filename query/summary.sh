@@ -96,8 +96,8 @@ breakdown() {
             c=$(grep ",$line," aggregate-bug-categories.txt | awk -F ',' '{ sum += $3 } END { print sum }')
 
             echo "##### $line: $c" >> summary.md
-            echo "| Repo        | Bug count   |" >> summary.md
-            echo "| ----------- | ----------- |" >> summary.md
+            echo "| #   | Repo        | Bug count   |" >> summary.md
+            echo "| --- | ----------- | ----------- |" >> summary.md
 
             JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
 
@@ -113,9 +113,11 @@ breakdown() {
 
             sort -k 2 -n -r s.tmp > s2.tmp
 
+            count=1
             while read -r r c; do
                 JSON+="{\"repo\": \"$r\", \"count\": $c},"
-                echo "| $r | $c |" >> summary.md
+                echo "| $count | $r | $c |" >> summary.md
+                (( count++ ))
             done < s2.tmp
 
             JSON="${JSON%?}" # Remove last ","
@@ -136,8 +138,8 @@ breakdown() {
             c=$(grep ",$line," aggregate-bug-types.txt | awk -F ',' '{ sum += $3 } END { print sum }')
 
             echo "##### $line: $c" >> summary.md
-            echo "| Repo        | Bug count   |" >> summary.md
-            echo "| ----------- | ----------- |" >> summary.md
+            echo "| #   | Repo        | Bug count   |" >> summary.md
+            echo "| --- | ----------- | ----------- |" >> summary.md
 
             rm s.tmp || :
             for r in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
@@ -153,9 +155,11 @@ breakdown() {
 
             JSON+="{\"type\": \"$line\", \"count\": $c, \"repos\": ["
 
+            count=1
             while read -r r c; do
                 JSON+="{\"repo\": \"$r\", \"count\": $c},"
-                echo "| $r | $c |" >> summary.md
+                echo "| $count | $r | $c |" >> summary.md
+                (( count++ ))
             done < s2.tmp
 
             JSON="${JSON%?}" # Remove last ","
