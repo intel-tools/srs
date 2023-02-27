@@ -174,4 +174,4 @@ jobs:
             comment=" -f comment-id=$commentid"
           fi
 
-          gh workflow run summary.yml -f run-id=${{ github.run_id }} $comment
+          gh workflow run summary.yml -f delay="1h" -f run-id=${{ github.run_id }} $comment

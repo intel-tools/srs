@@ -10,6 +10,10 @@ on:
         description: 'The comment-id to update'
         required: false
         type: string
+      delay:
+        description: 'Delay start to give previous workflow time to settle'
+        required: false
+        type: string
 jobs:
   summary:
     runs-on: ubuntu-latest
@@ -23,6 +27,10 @@ jobs:
 
       - name: free disk space
         run: ./query/free-disk-space.sh
+
+      - name: delay
+        if: inputs.delay != ''
+        run: sleep ${{ inputs.delay }}
 
       - name: Download artifacts with rate limit
         run: ./query/download-artifacts.sh ${{ inputs.run-id }}
