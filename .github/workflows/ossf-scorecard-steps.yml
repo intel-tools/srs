@@ -20,7 +20,26 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: generate save directory name
+        shell: bash
+        id: vars
+        run: |
+          SREPO=$(echo -n ${{ inputs.repo }} | tr '/' .)
+          echo "SREPO set to ${SREPO}"
+          echo "SREPO=${SREPO}" >> $GITHUB_OUTPUT
+
+      - name: get official score
+        id: official
+        run: |
+          curl https://api.securityscorecards.dev/projects/github.com/${{ inputs.repo }} > ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
+          if [ -s ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json ]; then
+            echo result=1 >> $GITHUB_OUTPUT
+          else
+            echo result=0 >> $GITHUB_OUTPUT
+          fi
+
       - name: rate limit
+        if: steps.official.outputs.result == '0'
         env:
           GHPAT: ${{ secrets.GHPAT }}
         run: |
@@ -32,21 +51,15 @@ jobs:
             echo "Rate limit remaining: $rl"
           done
 
-      - name: generate save directory name
-        shell: bash
-        id: vars
-        run: |
-          SREPO=$(echo -n ${{ inputs.repo }} | tr '/' .)
-          echo "SREPO set to ${SREPO}"
-          echo "SREPO=${SREPO}" >> $GITHUB_OUTPUT
-
       - name: checkout repo
+        if: steps.official.outputs.result == '0'
         uses: actions/checkout@v3
         with:
           repository: ${{ inputs.repo }}
           token: ${{ secrets.GHPAT }}
 
       - name: run OSFF scorecard
+        if: steps.official.outputs.result == '0'
         uses: ossf/scorecard-action@v2.1.2
         with:
           results_file: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
