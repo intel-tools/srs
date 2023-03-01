@@ -1,4 +1,20 @@
 on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 500
+        type: number
+      version:
+        description: 'scorecard version'
+        required: false
+        default: '4.10.2'
+        type: string
   workflow_call:
     inputs:
       repo:
@@ -9,8 +25,13 @@ on:
       rate-limit:
         description: 'rate limit'
         required: false
-        default: 150
+        default: 500
         type: number
+      version:
+        description: 'scorecard version'
+        required: false
+        default: '4.10.2'
+        type: string
     secrets:
       GHPAT:
         required: true
@@ -18,7 +39,6 @@ on:
 jobs:
   ossf-scorecard:
     runs-on: ubuntu-latest
-
     steps:
       - name: generate save directory name
         shell: bash
@@ -33,7 +53,13 @@ jobs:
         run: |
           curl https://api.securityscorecards.dev/projects/github.com/${{ inputs.repo }} > ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
           if [ -s ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json ]; then
-            echo result=1 >> $GITHUB_OUTPUT
+            version=$(jq -r '.scorecard.version' ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json)
+            if [ "$version" == "v${{ inputs.version }}" ]; then
+              echo result=1 >> $GITHUB_OUTPUT
+            else
+              echo result=0 >> $GITHUB_OUTPUT
+              rm *.ossf-scorecard.json
+            fi
           else
             echo result=0 >> $GITHUB_OUTPUT
           fi
@@ -51,32 +77,29 @@ jobs:
             echo "Rate limit remaining: $rl"
           done
 
-      - name: checkout repo
+      - name: Cache scorecard
+        id: cache
         if: steps.official.outputs.result == '0'
-        uses: actions/checkout@v3
+        uses: actions/cache@v3
         with:
-          repository: ${{ inputs.repo }}
-          token: ${{ secrets.GHPAT }}
+          path: scorecard-linux-amd64
+          key: scorecard-linux-amd64-${{ inputs.version }}
 
-      - name: run OSFF scorecard
-        if: steps.official.outputs.result == '0'
-        uses: ossf/scorecard-action@v2.1.2
-        with:
-          results_file: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
-          results_format: json
-          repo_token: ${{ secrets.GHPAT }}
-          publish_results: false
-
-      - name: check score and record summary
+      - name: Download scorecard
+        if: steps.official.outputs.result == '0' && steps.cache.outputs.cache-hit != 'true'
         run: |
-          score=$(jq '.score' ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json)
-          echo "## OSSF scorecard aggregate score: $score" >> $GITHUB_STEP_SUMMARY
+          wget https://github.com/ossf/scorecard/releases/download/v${{ inputs.version }}/scorecard_${{ inputs.version }}_linux_amd64.tar.gz
+          tar xvf scorecard*.tar.gz
 
-          if [ $score == "-1" ]; then
-            exit 1
-          fi
+      - name: Run scorecard
+        if: steps.official.outputs.result == '0'
+        env:
+          GITHUB_AUTH_TOKEN: ${{ secrets.GHPAT }}
+          GITHUB_TOKEN: ${{ secrets.GHPAT }}
+        run: ./scorecard-linux-amd64 --repo="${{ inputs.repo }}" --format=json > ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
 
       - name: save results
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           retention-days: 10
