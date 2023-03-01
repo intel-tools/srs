@@ -125,3 +125,36 @@ jobs:
     uses: ./.github/workflows/ossf-scorecard-steps.yml
     with:
       repo: ${{ matrix.repo }}
+
+  m11:
+    needs: split
+    if: needs.split.outputs.matrix11 != null
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix11)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m12:
+    needs: split
+    if: needs.split.outputs.matrix12 != null
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix12)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  m13:
+    needs: split
+    if: needs.split.outputs.matrix13 != null
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.split.outputs.matrix13)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard-steps.yml
+    with:
+      repo: ${{ matrix.repo }}
