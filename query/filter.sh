@@ -12,13 +12,13 @@ if [ ! -f $REPOSJSON ]; then
     exit 1
 fi
 
+rm matching-repos.txt || :
+
 search M4
 search CMake
 search Meson
 
 REPOS=$(cat matching-repos.txt | sort -u)
-
-rm matchin-repos.txt
 
 JSON="["
 for repo in $REPOS; do
