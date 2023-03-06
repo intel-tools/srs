@@ -96,7 +96,10 @@ jobs:
         env:
           GITHUB_AUTH_TOKEN: ${{ secrets.GHPAT }}
           GITHUB_TOKEN: ${{ secrets.GHPAT }}
-        run: ./scorecard-linux-amd64 --repo="${{ inputs.repo }}" --format=json > ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
+        run: |
+          ./scorecard-linux-amd64 --repo="${{ inputs.repo }}" --format=json \
+            --checks="Vulnerabilities,Signed-Releases,Maintained,CI-Tests,CII-Best-Practices,Security-Policy,Pinned-Dependencies,Dangerous-Workflow,Code-Review,Packaging,Binary-Artifacts,License,Token-Permissions" \
+            > ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
 
       - name: save results
         if: ${{ always() }}
