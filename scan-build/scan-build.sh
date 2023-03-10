@@ -103,6 +103,7 @@ search_and_install_dependencies() {
 
           packages=$(echo -n $packages | tr -dc '[:alnum:]\-\_ ')
 
+          apt-get update
           for p in ${packages}; do
             apt-get -y install "${p}" || :
           done
