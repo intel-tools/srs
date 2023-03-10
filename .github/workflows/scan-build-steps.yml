@@ -1,4 +1,21 @@
 on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        default: ''
+        type: string
+      comment-id:
+        description: 'comment-id'
+        required: false
+        default: ''
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
   workflow_call:
     inputs:
       repo:
