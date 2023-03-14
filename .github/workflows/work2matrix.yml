@@ -37,6 +37,36 @@ on:
       matrix10:
         description: "JSON array of max 256 inputs"
         value: ${{ jobs.create-build-matrix.outputs.matrix10 }}
+      matrix11:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix11 }}
+      matrix12:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix12 }}
+      matrix13:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix13 }}
+      matrix14:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix14 }}
+      matrix15:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix15 }}
+      matrix16:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix16 }}
+      matrix17:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix17 }}
+      matrix18:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix18 }}
+      matrix19:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix19 }}
+      matrix20:
+        description: "JSON array of max 256 inputs"
+        value: ${{ jobs.create-build-matrix.outputs.matrix20 }}
 
 jobs:
   create-build-matrix:
@@ -52,6 +82,16 @@ jobs:
       matrix8: ${{ steps.matrix.outputs.matrix8 }}
       matrix9: ${{ steps.matrix.outputs.matrix9 }}
       matrix10: ${{ steps.matrix.outputs.matrix10 }}
+      matrix11: ${{ steps.matrix.outputs.matrix11 }}
+      matrix12: ${{ steps.matrix.outputs.matrix12 }}
+      matrix13: ${{ steps.matrix.outputs.matrix13 }}
+      matrix14: ${{ steps.matrix.outputs.matrix14 }}
+      matrix15: ${{ steps.matrix.outputs.matrix15 }}
+      matrix16: ${{ steps.matrix.outputs.matrix16 }}
+      matrix17: ${{ steps.matrix.outputs.matrix17 }}
+      matrix18: ${{ steps.matrix.outputs.matrix18 }}
+      matrix19: ${{ steps.matrix.outputs.matrix19 }}
+      matrix20: ${{ steps.matrix.outputs.matrix20 }}
     steps:
       - name: save input
         run: echo -n '${{ inputs.input }}' > input.json
@@ -74,7 +114,7 @@ jobs:
                  JSON+="]}"
 
                  echo "matrix${MATRIXID}=$JSON" >> $GITHUB_OUTPUT
-                 echo "matrix${MATRIXID}=$JSON"
+                 echo "$JSON" > matrix${MATRIXID}.json
 
                  JSON="{ include: ["
                  (( MATRIXID++ ))
@@ -84,8 +124,6 @@ jobs:
 
               (( COUNT++ ))
 
-              continue
-
          done
 
          # Remove last ","
@@ -93,4 +131,11 @@ jobs:
          JSON+="]}"
 
          echo "matrix${MATRIXID}=$JSON" >> $GITHUB_OUTPUT
-         echo "matrix${MATRIXID}=$JSON"
+         echo "$JSON" > matrix${MATRIXID}.json
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 10
+          name: matrix-${{ github.run_id }}
+          path: matrix*.json
