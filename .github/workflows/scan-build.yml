@@ -1,30 +1,93 @@
 on:
-  repository_dispatch:
-    types: [scan-build-command]
-  workflow_call:
+  workflow_dispatch:
     inputs:
-      input:
-        description: 'json array of inputs'
+      repo:
+        description: 'repo'
         required: true
         default: ''
         type: string
+      comment-id:
+        description: 'comment-id'
+        required: false
+        default: ''
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
+  workflow_call:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        default: ''
+        type: string
+      comment-id:
+        description: 'comment-id'
+        required: false
+        default: ''
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
     secrets:
       GHPAT:
         required: true
+
 jobs:
-  prepare-docker:
+  scan-build:
     runs-on: ubuntu-latest
+
+    env:
+      LLVM_VERSION: "15"
+      TIMEOUT: "10m"
+
+    defaults:
+      run:
+        shell: bash
+
     steps:
+      - name: rate limit
+        env:
+          GHPAT: ${{ secrets.GHPAT }}
+        run: |
+          rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+          echo "Rate limit remaining: $rl"
+          while [ $rl -lt ${{ inputs.rate-limit }} ]; do
+            sleep 1h
+            rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+            echo "Rate limit remaining: $rl"
+          done
+
+      - name: generate save directory name
+        id: vars
+        run: |
+          srepo=$(echo ${{ inputs.repo }} | tr '/' .)
+
+          echo "SREPO set to ${SREPO}"
+          echo "SREPO=$srepo" >> $GITHUB_OUTPUT
+
+      - name: checkout repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GHPAT }}
+
+      - name: checkout target repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GHPAT }}
+          path: repo
+
       - name: Cache docker
         id: cache
         uses: actions/cache@v3
         with:
           path: scan-build.tar
           key: scan-build
-
-      - name: checkout repo
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v3
 
       - name: Set up Docker Buildx
         if: steps.cache.outputs.cache-hit != 'true'
@@ -41,206 +104,54 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  get-input:
-    runs-on: ubuntu-latest
-    outputs:
-      input: ${{ steps.json.outputs.json }}
-    steps:
-      - name: Get input form slash-command
-        if: github.event.client_payload.slash_command.args.named.repo != null
-        id: vars
-        run: |
-          echo "[{" > json
-          echo "\"repo\":\"${{ github.event.client_payload.slash_command.args.named.repo }}\"," >> json
-          echo "\"comment-id\": \"${{ github.event.client_payload.github.payload.comment.id }}\"" >> json
-          echo "}]" >> json
-          echo "run-url=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> $GITHUB_OUTPUT
+      - name: Load image
+        run: docker load -i scan-build.tar
 
-      - uses: peter-evans/create-or-update-comment@v2
-        if: github.event.client_payload.slash_command.args.named.repo != null
+      - name: scan-build
+        timeout-minutes: 60
+        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build "${{ inputs.repo }}" "$LLVM_VERSION" "$TIMEOUT"
+
+      - name: fix permissions
+        if: ${{ always() }}
+        run: |
+          USER=$(whoami)
+          sudo chown -R $USER.$USER ${{ steps.vars.outputs.SREPO }}
+
+      - name: convert to json
+        if: ${{ always() }}
+        run: ./scan-build/convert2json.sh ${{ inputs.repo }} ${{ steps.vars.outputs.SREPO }}
+
+      - name: Adding scan summary to Github markdown
+        if: ${{ always() }}
+        env:
+          SREPO: ${{ steps.vars.outputs.SREPO }}
+        run: |
+          bugs=$(jq '.bugs | length' $SREPO/$SREPO.scan-build.json)
+          functions=$(jq '.functions | length' $SREPO/$SREPO.scan-build.json)
+
+          [[ ${bugs} -eq 0 ]] && exit 0
+
+          echo "### ${{ inputs.repo }}: ${bugs} bugs found" >> $SREPO/summary.md
+          echo "### Functions: $functions" >> $SREPO/summary.md
+          echo "#### Bug categories" >> $SREPO/summary.md
+          echo "| Category | Count |" >> $SREPO/summary.md
+          echo "| --- | --- |" >> $SREPO/summary.md
+          jq '.categories[] | "| \(.category) | \(.count) |"' $SREPO/$SREPO.scan-build.json | tr -d '"' >> $SREPO/summary.md
+          echo "#### Bug types" >> $SREPO/summary.md
+          echo "| Type | Count |" >> $SREPO/summary.md
+          echo "| --- | --- |" >> $SREPO/summary.md
+          jq '.types[] | "| \(.type) | \(.count) |"' $SREPO/$SREPO.scan-build.json | tr -d '"' >> $SREPO/summary.md
+
+          cat $SREPO/summary.md >> $GITHUB_STEP_SUMMARY
+
+      - name: compress result
+        if: ${{ always() }}
+        run: tar -czvf ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz ${{ steps.vars.outputs.SREPO }}
+
+      - name: save results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v3
         with:
-          token: ${{ secrets.GHPAT }}
-          comment-id: ${{ github.event.client_payload.github.payload.comment.id }}
-          body: |
-            [Command run output](${{ steps.vars.outputs.run-url }})
-
-      - name: Get input from query
-        if: inputs.input != ''
-        run: echo '${{ inputs.input }}' > json
-
-      - id: json
-        run: |
-          JSON=$(cat json)
-          echo json=$JSON >> $GITHUB_OUTPUT
-
-  split:
-    needs: get-input
-    uses: ./.github/workflows/work2matrix.yml
-    with:
-      input: ${{ needs.get-input.outputs.input }}
-
-  m1:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix1 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix1)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-      comment-id: ${{ matrix.comment-id }}
-
-  m2:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix2 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix2)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m3:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix3 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix3)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m4:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix4 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix4)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m5:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix5 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix5)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m6:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix6 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix6)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m7:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix7 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix7)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m8:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix8 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix8)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m9:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix9 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix9)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m10:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix10 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix10)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m11:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix11 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix11)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m12:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix12 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix12)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m13:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix13 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix13)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m14:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix14 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix14)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m15:
-    needs: [prepare-docker, split]
-    if: needs.split.outputs.matrix15 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix15)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/scan-build-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+          retention-days: 10
+          name: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}
+          path: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz

@@ -1,183 +1,68 @@
 on:
   workflow_call:
     inputs:
-      input:
-        description: 'json array of inputs'
+      repo:
+        description: 'repo'
         required: true
         default: ''
         type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
     secrets:
       GHPAT:
         required: true
 
 jobs:
-  split:
-    uses: ./.github/workflows/work2matrix.yml
-    with:
-      input: ${{ inputs.input }}
+  metadata:
+    runs-on: ubuntu-latest
 
-  m1:
-    needs: split
-    if: needs.split.outputs.matrix1 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix1)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+    steps:
+      - name: rate limit
+        env:
+          GHPAT: ${{ secrets.GHPAT }}
+        run: |
+          rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+          echo "Rate limit remaining: $rl"
+          while [ $rl -lt ${{ inputs.rate-limit }} ]; do
+            sleep 1h
+            rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+            echo "Rate limit remaining: $rl"
+          done
 
-  m2:
-    needs: split
-    if: needs.split.outputs.matrix2 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix2)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: generate save directory name
+        shell: bash
+        id: vars
+        run: |
+          SREPO=$(echo -n ${{ inputs.repo }} | tr '/' .)
+          echo "SREPO set to ${SREPO}"
+          echo "SREPO=${SREPO}" >> $GITHUB_OUTPUT
 
-  m3:
-    needs: split
-    if: needs.split.outputs.matrix3 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix3)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: checkout repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GHPAT }}
 
-  m4:
-    needs: split
-    if: needs.split.outputs.matrix4 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix4)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: run cloc
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cloc
+          cloc --json --report-file ${{ steps.vars.outputs.SREPO }}.cloc.json .
 
-  m5:
-    needs: split
-    if: needs.split.outputs.matrix5 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix5)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: get metadata
+        env:
+          GH_TOKEN: ${{ secrets.GHPAT }}
+        run: |
+          gh api -H "Accept: application/vnd.github+json" /repos/${{ inputs.repo }} > ${{ steps.vars.outputs.SREPO }}.metadata.json
 
-  m6:
-    needs: split
-    if: needs.split.outputs.matrix6 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix6)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m7:
-    needs: split
-    if: needs.split.outputs.matrix7 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix7)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m8:
-    needs: split
-    if: needs.split.outputs.matrix8 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix8)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m9:
-    needs: split
-    if: needs.split.outputs.matrix9 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix9)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m10:
-    needs: split
-    if: needs.split.outputs.matrix10 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix10)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m11:
-    needs: split
-    if: needs.split.outputs.matrix11 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix11)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m12:
-    needs: split
-    if: needs.split.outputs.matrix12 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix12)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m13:
-    needs: split
-    if: needs.split.outputs.matrix13 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix13)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m14:
-    needs: split
-    if: needs.split.outputs.matrix14 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix14)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m15:
-    needs: split
-    if: needs.split.outputs.matrix15 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix15)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/metadata-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 10
+          name: ${{ steps.vars.outputs.SREPO }}.metadata
+          path: |
+            ${{ steps.vars.outputs.SREPO }}.cloc.json
+            ${{ steps.vars.outputs.SREPO }}.metadata.json

@@ -1,0 +1,99 @@
+name: Run SRS scans
+on:
+  workflow_dispatch:
+    inputs:
+      run-ids:
+        description: 'The list of run ids used for this scan chain'
+        required: true
+        type: string
+      matrix:
+        description: 'Current matrix id to process'
+        required: true
+        type: number
+      number-of-matrices:
+        description: 'Total number of matrices'
+        required: true
+        type: number
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GHPAT }}
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - name: get first run id
+        id: cachekey
+        run: |
+          cachekey=$(echo '${{ inputs.run-ids }}' | awk -F',' '{ print $1 }')
+          echo "cachekey=$cachekey" >> $GITHUB_OUTPUT
+
+      - name: Get matrices
+        uses: actions/cache@v3
+        id: cache
+        with:
+          path: matrix*.json
+          key: matrix-${{ steps.cachekey.outputs.cachekey }}
+
+      - name: get matrix
+        id: matrix
+        run: |
+          [[ ! -f matrix${{ inputs.matrix }}.json ]] && exit 1
+
+          cat matrix${{ inputs.matrix }}.json
+          matrix=$(cat matrix${{ inputs.matrix }}.json)
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
+
+  scan-build:
+    needs: matrix
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/scan-build.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  ossf-scorecard:
+    needs: matrix
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/ossf-scorecard.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  metadata:
+    needs: matrix
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/metadata.yml
+    with:
+      repo: ${{ matrix.repo }}
+
+  next:
+    needs: [scan-build, ossf-scorecard, metadata]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GHPAT }}
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GHPAT }}
+
+      - run: |
+          runids="${{ inputs.run-ids }},${{ github.run_id }}"
+
+          matrix=${{ inputs.matrix }}
+          (( matrix++ ))
+
+          if [ $matrix -le ${{ inputs.number-of-matrices }} ]; then
+            gh workflow run srs.yml -f run-ids=${runids} -f number-of-matrices=${{ inputs.number-of-matrices }} -f matrix=${matrix}
+          else
+            gh workflow run summary.yml -f delay="1h" -f run-ids=${runids}
+          fi

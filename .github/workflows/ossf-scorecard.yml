@@ -1,182 +1,110 @@
 on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 500
+        type: number
+      version:
+        description: 'scorecard version'
+        required: false
+        default: '4.10.2'
+        type: string
   workflow_call:
     inputs:
-      input:
-        description: 'json array of inputs'
+      repo:
+        description: 'repo'
         required: true
         default: ''
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 500
+        type: number
+      version:
+        description: 'scorecard version'
+        required: false
+        default: '4.10.2'
         type: string
     secrets:
       GHPAT:
         required: true
 
 jobs:
-  split:
-    uses: ./.github/workflows/work2matrix.yml
-    with:
-      input: ${{ inputs.input }}
+  ossf-scorecard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: generate save directory name
+        shell: bash
+        id: vars
+        run: |
+          SREPO=$(echo -n ${{ inputs.repo }} | tr '/' .)
+          echo "SREPO set to ${SREPO}"
+          echo "SREPO=${SREPO}" >> $GITHUB_OUTPUT
 
-  m1:
-    needs: split
-    if: needs.split.outputs.matrix1 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix1)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: get official score
+        id: official
+        run: |
+          curl https://api.securityscorecards.dev/projects/github.com/${{ inputs.repo }} > ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
+          if [ -s ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json ]; then
+            version=$(jq -r '.scorecard.version' ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json)
+            if [ "$version" == "v${{ inputs.version }}" ]; then
+              echo result=1 >> $GITHUB_OUTPUT
+            else
+              echo result=0 >> $GITHUB_OUTPUT
+              rm *.ossf-scorecard.json
+            fi
+          else
+            echo result=0 >> $GITHUB_OUTPUT
+          fi
 
-  m2:
-    needs: split
-    if: needs.split.outputs.matrix2 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix2)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: rate limit
+        if: steps.official.outputs.result == '0'
+        env:
+          GHPAT: ${{ secrets.GHPAT }}
+        run: |
+          rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+          echo "Rate limit remaining: $rl"
+          while [ $rl -lt ${{ inputs.rate-limit }} ]; do
+            sleep 1h
+            rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+            echo "Rate limit remaining: $rl"
+          done
 
-  m3:
-    needs: split
-    if: needs.split.outputs.matrix3 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix3)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: Cache scorecard
+        id: cache
+        if: steps.official.outputs.result == '0'
+        uses: actions/cache@v3
+        with:
+          path: scorecard-linux-amd64
+          key: scorecard-linux-amd64-${{ inputs.version }}
 
-  m4:
-    needs: split
-    if: needs.split.outputs.matrix4 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix4)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: Download scorecard
+        if: steps.official.outputs.result == '0' && steps.cache.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/ossf/scorecard/releases/download/v${{ inputs.version }}/scorecard_${{ inputs.version }}_linux_amd64.tar.gz
+          tar xvf scorecard*.tar.gz
 
-  m5:
-    needs: split
-    if: needs.split.outputs.matrix5 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix5)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: Run scorecard
+        if: steps.official.outputs.result == '0'
+        env:
+          GITHUB_AUTH_TOKEN: ${{ secrets.GHPAT }}
+          GITHUB_TOKEN: ${{ secrets.GHPAT }}
+        run: |
+          ./scorecard-linux-amd64 --repo="${{ inputs.repo }}" --format=json \
+            --checks="Vulnerabilities,Signed-Releases,Maintained,CI-Tests,CII-Best-Practices,Security-Policy,Pinned-Dependencies,Dangerous-Workflow,Code-Review,Packaging,Binary-Artifacts,License,Token-Permissions" \
+            > ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json
 
-  m6:
-    needs: split
-    if: needs.split.outputs.matrix6 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix6)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m7:
-    needs: split
-    if: needs.split.outputs.matrix7 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix7)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m8:
-    needs: split
-    if: needs.split.outputs.matrix8 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix8)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m9:
-    needs: split
-    if: needs.split.outputs.matrix9 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix9)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m10:
-    needs: split
-    if: needs.split.outputs.matrix10 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix10)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m11:
-    needs: split
-    if: needs.split.outputs.matrix11 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix11)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m12:
-    needs: split
-    if: needs.split.outputs.matrix12 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix12)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m13:
-    needs: split
-    if: needs.split.outputs.matrix13 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix13)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m14:
-    needs: split
-    if: needs.split.outputs.matrix14 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix14)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
-
-  m15:
-    needs: split
-    if: needs.split.outputs.matrix15 != null
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.split.outputs.matrix15)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/ossf-scorecard-steps.yml
-    with:
-      repo: ${{ matrix.repo }}
+      - name: save results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 10
+          name: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard
+          path: ${{ steps.vars.outputs.SREPO }}.ossf-scorecard.json

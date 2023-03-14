@@ -2,13 +2,9 @@ name: Aggregate results and create summary
 on:
   workflow_dispatch:
     inputs:
-      run-id:
-        description: 'The workflow run-id to look at'
+      run-ids:
+        description: 'The workflow run-ids to look at'
         required: true
-        type: string
-      comment-id:
-        description: 'The comment-id to update'
-        required: false
         type: string
       delay:
         description: 'Delay start to give previous workflow time to settle'
@@ -28,27 +24,23 @@ jobs:
       - name: free disk space
         run: ./query/free-disk-space.sh
 
+      - id: vars
+        run: |
+          firstid=$(echo "${{ inputs.run-ids }}" | awk -F',' '{ print $1 }')
+          echo "firstid=$firstid" >> $GITHUB_OUTPUT
+
       - name: delay
         if: inputs.delay != ''
         run: sleep ${{ inputs.delay }}
 
       - name: Download artifacts with rate limit
-        run: ./query/download-artifacts.sh ${{ inputs.run-id }}
+        run: ./query/download-artifacts.sh "${{ inputs.run-ids }}"
 
       - name: Summarize results
-        run: ./query/summary.sh ${{ inputs.run-id }}
+        run: ./query/summary.sh "${{ steps.vars.outputs.firstid }}"
 
       - name: Github step summary
         run: cat summary.md >> $GITHUB_STEP_SUMMARY
-
-      - name: Update comment
-        if: inputs.comment-id != ''
-        uses: peter-evans/create-or-update-comment@v2
-        with:
-          token: ${{ secrets.GHPAT }}
-          comment-id: ${{ inputs.comment-id }}
-          body-file: summary.md
-          reactions: hooray
 
       - name: save results
         uses: actions/upload-artifact@v3
@@ -71,12 +63,12 @@ jobs:
 
           cd=$(date +"%Y.%m.%d")
           year=$(date +"%Y")
-          d="$cd-${{ github.run_id }}"
+          d="$cd-${{ inputs.vars.outputs.firstid }}"
           bugs=$(jq '.bugs' bug_breakdown.json)
 
           mkdir -p scans/$d
 
-          cp ${{ inputs.run-id }}/query-repositories/filtered-repos.json scans/$d
+          cp ${{ steps.vars.outputs.firstid }}/query-repositories/filtered-repos.json scans/$d
           cp all-results.tar.gz scans/$d
           cp bug_breakdown.json scans/$d
           cp score_vs_bugs.csv scans/$d
@@ -93,7 +85,7 @@ jobs:
           echo "***" >> scans/$d/index.md
           echo "" >> scans/$d/index.md
 
-          cat ${{ inputs.run-id }}/query-repositories/query-summary.md >> scans/$d/index.md
+          cat ${{ steps.vars.outputs.firstid }}/query-repositories/query-summary.md >> scans/$d/index.md
           cat summary.md >> scans/$d/index.md
 
           echo "[back](../..)" >> scans/$d/index.md

@@ -1,7 +1,7 @@
 #!/bin/bash
-RUN_ID=$1
+RUN_IDS=$1
 
-if [ -z $RUN_ID ]; then
+if [ -z $RUN_IDS ]; then
     echo "No run-id specified as input"
     exit 1
 fi
@@ -26,41 +26,51 @@ rate_limit() {
     done
 }
 
-mkdir -p $RUN_ID
+download_workflow_id() {
+    RUN_ID=$1
+    DEST=$2
 
-page=1
-got=0
-while [ true ]; do
-    rate_limit
-    gh api -H "Accept: application/vnd.github+json" "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100&page=$page" > $RUN_ID/artifacts.$page.json
-
-    total=$(jq '.total_count' $RUN_ID/artifacts.1.json)
-    got=$(( page * 100 ))
-    (( page++ ))
-
-    [[ $got -lt $total ]] && continue
-
-    break
-done
-
-for a in $(ls $RUN_ID/artifacts.*.json); do
-    for b in $(jq -r '.artifacts[] | "\(.id),\(.name),\(.expired)"' $a); do
-        id=$(echo $b | awk -F',' '{ print $1 }')
-        name=$(echo $b | awk -F',' '{ print $2 }')
-        expired=$(echo $b | awk -F',' '{ print $3 }')
-
-        [[ $expired == "true" ]] && continue
+    page=1
+    got=0
+    while [ true ]; do
         rate_limit
-        gh api -H "Accept: application/vnd.github+json" /repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip > $RUN_ID/$name.zip || continue
-        mkdir -p $RUN_ID/$name
-        unzip -o -d $RUN_ID/$name $RUN_ID/$name.zip || continue
-        rm $RUN_ID/$name.zip
+        gh api -H "Accept: application/vnd.github+json" "/repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/artifacts?per_page=100&page=$page" > $DEST/artifacts.$RUN_ID.$page.json
 
-        if [ -f $RUN_ID/$name/$name.tar.gz ]; then
-            tar -xvf $RUN_ID/$name/$name.tar.gz -C $RUN_ID/$name --wildcards --no-anchored '*.scan-build.json'
-            rm $RUN_ID/$name/$name.tar.gz
-        fi
+        total=$(jq '.total_count' $DEST/artifacts.$RUN_ID.1.json)
+        got=$(( page * 100 ))
+        (( page++ ))
+
+        [[ $got -lt $total ]] && continue
+
+        break
     done
-done
 
-rm $RUN_ID/artifacts.*.json
+    for a in $(ls $DEST/artifacts.$RUN_ID.*.json); do
+        for b in $(jq -r '.artifacts[] | "\(.id),\(.name),\(.expired)"' $a); do
+            id=$(echo $b | awk -F',' '{ print $1 }')
+            name=$(echo $b | awk -F',' '{ print $2 }')
+            expired=$(echo $b | awk -F',' '{ print $3 }')
+
+            [[ $expired == "true" ]] && continue
+            rate_limit
+            gh api -H "Accept: application/vnd.github+json" /repos/$GITHUB_REPOSITORY/actions/artifacts/$id/zip > $DEST/$name.zip || continue
+            mkdir -p $DEST/$name
+            unzip -o -d $DEST/$name $DEST/$name.zip || continue
+            rm $DEST/$name.zip
+
+            if [ -f $DEST/$name/$name.tar.gz ]; then
+                tar -xvf $DEST/$name/$name.tar.gz -C $DEST/$name --wildcards --no-anchored '*.scan-build.json'
+                rm $DEST/$name/$name.tar.gz
+            fi
+        done
+    done
+
+    rm $DEST/artifacts.*.json
+}
+
+DEST=$(echo $RUN_IDS | awk -F',' '{ print $1 }')
+mkdir -p $DEST
+
+for RUN_ID in $(echo $RUN_IDS | tr "," "\n"); do
+    download_workflow_id $RUN_ID $DEST
+done
