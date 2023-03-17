@@ -43,7 +43,7 @@ jobs:
 
     env:
       LLVM_VERSION: "15"
-      TIMEOUT: "10m"
+      TIMEOUT: "260m"
 
     defaults:
       run:
@@ -108,7 +108,7 @@ jobs:
         run: docker load -i scan-build.tar
 
       - name: scan-build
-        timeout-minutes: 60
+        timeout-minutes: 300
         run: docker run -v "$GITHUB_WORKSPACE":/work scan-build "${{ inputs.repo }}" "$LLVM_VERSION" "$TIMEOUT"
 
       - name: fix permissions
