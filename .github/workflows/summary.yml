@@ -63,7 +63,7 @@ jobs:
 
           cd=$(date +"%Y.%m.%d")
           year=$(date +"%Y")
-          d="$cd-${{ inputs.vars.outputs.firstid }}"
+          d="$cd-${{ steps.vars.outputs.firstid }}"
           bugs=$(jq '.bugs' bug_breakdown.json)
 
           mkdir -p scans/$d
