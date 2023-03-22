@@ -66,7 +66,7 @@ generate_json() {
               bugcategory="Readability"
               bugfile=$(echo $line | awk -F":" '{ print $1 }')
               bugline=$(echo $line | awk -F":" '{ print $2 }')
-              bugfunction=$(echo $line | awk -F"function" '{ print $2 }' | awk '{ print $1 }' )
+              bugfunction=$(echo $line | awk -F"function" '{ print $2 }' | awk '{ print $1 }' | sed "s/'//g")
               bugdescription=$(echo $line | awk -F"cognitive complexity of" '{ print $2 }' | awk '{ print $1 }')
 
               [[ $bugdescription -lt 25 ]] && continue
