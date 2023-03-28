@@ -6,11 +6,6 @@ on:
         required: true
         default: ''
         type: string
-      comment-id:
-        description: 'comment-id'
-        required: false
-        default: ''
-        type: string
       rate-limit:
         description: 'rate limit'
         required: false
@@ -21,11 +16,6 @@ on:
       repo:
         description: 'repo'
         required: true
-        default: ''
-        type: string
-      comment-id:
-        description: 'comment-id'
-        required: false
         default: ''
         type: string
       rate-limit:
