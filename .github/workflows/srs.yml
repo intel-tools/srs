@@ -87,13 +87,25 @@ jobs:
           token: ${{ secrets.GHPAT }}
 
       - run: |
+          start_next() {
+            matrix=$1
+            runids=$2
+            retry=0
+            if [ $matrix -le ${{ inputs.number-of-matrices }} ]; then
+              gh workflow run srs.yml -f run-ids=${runids} -f number-of-matrices=${{ inputs.number-of-matrices }} -f matrix=${matrix} || retry=1
+            else
+              gh workflow run summary.yml -f delay="1h" -f run-ids=${runids} || retry=1
+            fi
+            return $retry
+          }
+
           runids="${{ inputs.run-ids }},${{ github.run_id }}"
 
           matrix=${{ inputs.matrix }}
           (( matrix++ ))
 
-          if [ $matrix -le ${{ inputs.number-of-matrices }} ]; then
-            gh workflow run srs.yml -f run-ids=${runids} -f number-of-matrices=${{ inputs.number-of-matrices }} -f matrix=${matrix}
-          else
-            gh workflow run summary.yml -f delay="1h" -f run-ids=${runids}
-          fi
+          while : ; do
+            start_next $matrix $runids
+            [[ $? -eq 0 ]] && break
+            sleep 5m
+          done
