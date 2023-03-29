@@ -1,9 +1,10 @@
 #!/bin/bash
 set -o pipefail
 
-export REPO=$1
+export REPO=${1:-"scan-build-result"}
 export LLVM_VERSION=${2:-"15"}
 export TIMEOUT=${3:-"30m"}
+
 export SREPO=$(echo $REPO | tr '/' .)
 export OUTPUT=/work/$SREPO
 

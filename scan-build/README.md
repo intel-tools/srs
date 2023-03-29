@@ -7,7 +7,7 @@ complexity analysis on all functions found in the project during build.
 ### scan-build.sh
 
 This script is set as the ENTRYPOINT for the Docker image and takes three inputs. It expects a
-shared folder to be mounted at /work and the target repository already to be cloned at /work/repo.
+shared folder to be mounted at /work with the code to be scanned placed inside.
 
 Inputs:
 
@@ -19,9 +19,10 @@ $3: Timeout value for each scan , default is "30m"
 
 Outputs:
 
-The scan-build HTMLs will placed in the shared host folder at /work/{owner}.{repo}/scan-build-result
+The scan-build HTMLs will placed in the shared host folder at /work/{owner}.{repo}/scan-build-result or
+if no name has been specified at /work/scan-build-result/scan-build-result
 
-The clang-tidy cognitive complexity log will be at /work/{owner}.{repo}/cognitive-complexity.log
+The clang-tidy cognitive complexity log will be in cognitive-complexity.log in the result folder
 
 ### convert2json.sh
 
