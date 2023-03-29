@@ -110,8 +110,11 @@ search_and_install_dependencies() {
 }
 
 get_submodules() {
-  cd /work/repo
-  git submodule update --init --recursive || :
+  local dir=$(find . -iname ".gitmodules" -type f -printf '%h\n')
+  for d in $dir; do
+      cd $d
+      git submodule update --init --recursive || :
+  done
 }
 
 scan_build_autoconf() {
@@ -289,7 +292,7 @@ echo "Received input: $REPO"
 
 mkdir -p $OUTPUT
 
-cd /work/repo
+cd /work
 
 find_builddirs
 search_and_install_dependencies

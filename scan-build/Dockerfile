@@ -17,6 +17,6 @@ RUN apt-get update && apt-get install -y \
     clang-15 clang-tools-15 clang-tidy-15 \
     && apt-get clean \
     && chmod +x /scan-build.sh \
-    && git config --global --add safe.directory /work/repo
+    && git config --global --add safe.directory *
 
 ENTRYPOINT ["/scan-build.sh"]
