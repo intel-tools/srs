@@ -1,12 +1,11 @@
-name: Trigger weekly scan
+name: Trigger monthly scan
 
 on:
   schedule:
-    # every sunday
-    - cron: '0 0 * * 0'
+    - cron: '0 0 1 * *'
 jobs:
   build:
-    name: Trigger Weekly scan
+    name: Trigger monthly scan
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GHPAT }}
