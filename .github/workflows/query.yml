@@ -140,7 +140,6 @@ jobs:
       - name: save results
         uses: actions/upload-artifact@v3
         with:
-          retention-days: 90
           name: query-repositories
           path: |
             repos.json
