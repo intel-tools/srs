@@ -48,7 +48,6 @@ jobs:
           retention-days: 90
           name: aggregate-results
           path: |
-            bug_breakdown.json
             score_vs_bugs.csv
             summary.md
             all-results.tar.gz
@@ -64,13 +63,15 @@ jobs:
           cd=$(date +"%Y.%m.%d")
           year=$(date +"%Y")
           d="$cd-${{ steps.vars.outputs.firstid }}"
-          bugs=$(jq '.bugs' bug_breakdown.json)
+          built=$(cat stats | awk -F',' '{ print $1 }')
+          scored=$(cat stats | awk -F',' '{ print $2 }')
+          bugs=$(cat stats | awk -F',' '{ print $3 }')
+          cmplxf=$(cat stats | awk -F',' '{ print $4 }')
 
           mkdir -p scans/$d
 
           cp ${{ steps.vars.outputs.firstid }}/query-repositories/filtered-repos.json scans/$d
           cp all-results.tar.gz scans/$d
-          cp bug_breakdown.json scans/$d
           cp score_vs_bugs.csv scans/$d
 
           echo "---" > scans/$d/index.md
@@ -79,7 +80,7 @@ jobs:
           echo "" >> scans/$d/index.md
 
           echo "## Scan date: $cd" >> scans/$d/index.md
-          echo "[All results (tar.gz)](./all-results.tar.gz) [Repo list (JSON)](./filtered-repos.json) [Bug breakdown (JSON)](./bug_breakdown.json) [Score vs Bugs (CSV)](./score_vs_bugs.csv)" >> scans/$d/index.md
+          echo "[All results (tar.gz)](./all-results.tar.gz) [Repo list (JSON)](./filtered-repos.json) [Score vs Bugs (CSV)](./score_vs_bugs.csv)" >> scans/$d/index.md
 
           echo "" >> scans/$d/index.md
           echo "***" >> scans/$d/index.md
@@ -90,7 +91,7 @@ jobs:
 
           echo "[back](../..)" >> scans/$d/index.md
 
-          echo "$d,$cd,$year,$bugs" >> _data/scans.csv
+          echo "$d,$cd,$year,$bugs,$built,$scored,$cmplxf" >> _data/scans.csv
 
           git add scans/$d
           git add _data/scans.csv

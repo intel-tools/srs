@@ -3,6 +3,26 @@ ARTIFACT_DIR=${1:-"."}
 
 create_table() {
           echo "" > summary.md
+
+          built=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' | wc -l)
+          scored=$(find $ARTIFACT_DIR -type f -name '*.ossf-scorecard.json' | wc -l)
+          bugs=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
+          complex_functions=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
+          bugs=$(( bugs - complex_functions ))
+
+          echo "$built, $scored, $bugs, $complex_functions" > stats
+
+          echo "### Repositories built with scan-build: ${built}" >> summary.md
+          echo "### Repositories scored with OSSF scorecard: ${scored}" >> summary.md
+          echo "" >> summary.md
+          echo "***" >> summary.md
+          echo "" >> summary.md
+          echo "### Total number of bugs found: ${bugs}" >> summary.md
+          echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> summary.md
+          echo "" >> summary.md
+          echo "***" >> summary.md
+          echo "" >> summary.md
+
           echo "### Breakdown" >> summary.md
 
           echo "| #    | Repo        | Bugs       | OSSF score | High cognitive complexity functions / Total functions   |" >> summary.md
@@ -45,153 +65,6 @@ create_table() {
           rm *.tmp || :
 }
 
-breakdown() {
-          built=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' | wc -l)
-          scored=$(find $ARTIFACT_DIR -type f -name '*.ossf-scorecard.json' | wc -l)
-          bugs=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs | length' {} + | awk '{ sum += $1 } END { print sum }')
-          complex_functions=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
-          bugs=$(( bugs - complex_functions ))
-
-          echo "" >> summary.md
-          echo "***" >> summary.md
-          echo "" >> summary.md
-          echo "### Repositories built with scan-build: ${built}" >> summary.md
-          echo "### Repositories scored with OSSF scorecard: ${scored}" >> summary.md
-          echo "" >> summary.md
-          echo "***" >> summary.md
-          echo "" >> summary.md
-          echo "### Total number of bugs found: ${bugs}" >> summary.md
-          echo "### Total number of high cognitivite complexity functions found: ${complex_functions}" >> summary.md
-
-          JSON="{\"bugs\": $bugs, "
-
-          rm *.tmp 2>/dev/null
-          rm clean-repos.txt 2>/dev/null
-          rm aggregate-bug-types.txt 2>/dev/null
-          rm aggregate-bug-categories.txt 2>/dev/null
-          touch clean-repos.txt
-          touch aggregate-bug-types.txt
-          touch aggregate-bug-categories.txt
-
-          for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
-            if [ $(jq '.bugs | length' $f) -eq 0 ]; then
-                jq -r '.repo' $f >> clean-repos.txt
-            else
-                jq -r '.types[] | ",\(.type),\(.count)"' $f >> aggregate-bug-types.txt
-                jq -r '.categories[] | ",\(.category),\(.count)"' $f >> aggregate-bug-categories.txt
-            fi
-          done
-
-          echo "" >> summary.md
-          echo "***" >> summary.md
-          echo "" >> summary.md
-
-          cat aggregate-bug-categories.txt | awk -F',' '{ print $2 }' | sort -u > bug-categories.txt
-          cat aggregate-bug-types.txt | awk -F',' '{ print $2 }' | sort -u > bug-types.txt
-
-          echo "#### Bug categories" >> summary.md
-
-          JSON+="\"categories\": ["
-          while read -r line; do
-            c=$(grep ",$line," aggregate-bug-categories.txt | awk -F ',' '{ sum += $3 } END { print sum }')
-
-            echo "##### $line: $c" >> summary.md
-            echo "| #   | Repo        | Bug count   |" >> summary.md
-            echo "| --- | ----------- | ----------- |" >> summary.md
-
-            JSON+="{\"category\": \"$line\", \"count\": $c, \"repos\": ["
-
-            rm s.tmp || :
-            for r in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
-              repo=$(jq -r '.repo' $r)
-              count=$(jq ".bugs[] | select( any(.; .category == \"$line\") ) | length" $r | wc -l)
-
-              if [ $count -gt 0 ]; then
-                echo "$repo $count" >> s.tmp
-              fi
-            done
-
-            sort -k 2 -n -r s.tmp > s2.tmp
-
-            count=1
-            while read -r r c; do
-                JSON+="{\"repo\": \"$r\", \"count\": $c},"
-                echo "| $count | $r | $c |" >> summary.md
-                (( count++ ))
-            done < s2.tmp
-
-            JSON="${JSON%?}" # Remove last ","
-            JSON+="]},"
-
-            echo "" >> summary.md
-            echo "***" >> summary.md
-            echo "" >> summary.md
-
-          done < bug-categories.txt
-          JSON="${JSON%?}" # Remove last ","
-          JSON+="], "
-
-          echo "#### Bug types" >> summary.md
-
-          JSON+="\"types\": ["
-          while read -r line; do
-            c=$(grep ",$line," aggregate-bug-types.txt | awk -F ',' '{ sum += $3 } END { print sum }')
-
-            echo "##### $line: $c" >> summary.md
-            echo "| #   | Repo        | Bug count   |" >> summary.md
-            echo "| --- | ----------- | ----------- |" >> summary.md
-
-            rm s.tmp || :
-            for r in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
-              repo=$(jq -r '.repo' $r)
-              count=$(jq ".bugs[] | select( any(.; .type == \"$line\") ) | length" $r | wc -l)
-
-              if [ $count -gt 0 ]; then
-                echo "$repo $count" >> s.tmp
-              fi
-            done
-
-            sort -k 2 -n -r s.tmp > s2.tmp
-
-            JSON+="{\"type\": \"$line\", \"count\": $c, \"repos\": ["
-
-            count=1
-            while read -r r c; do
-                JSON+="{\"repo\": \"$r\", \"count\": $c},"
-                echo "| $count | $r | $c |" >> summary.md
-                (( count++ ))
-            done < s2.tmp
-
-            JSON="${JSON%?}" # Remove last ","
-            JSON+="]},"
-
-            echo "" >> summary.md
-            echo "***" >> summary.md
-            echo "" >> summary.md
-          done < bug-types.txt
-          JSON="${JSON%?}" # Remove last ","
-          JSON+="]}"
-
-          echo $JSON
-
-          echo $JSON | jq '.' > bug_breakdown.json
-
-          echo "" >> summary.md
-          echo "***" >> summary.md
-          echo "" >> summary.md
-
-          clean_repos=$(cat clean-repos.txt | wc -l)
-          echo "### Repositories with no bugs: ${clean_repos}" >> summary.md
-          echo "" >> summary.md
-          echo "| Repo |" >> summary.md
-          echo "| ---- |" >> summary.md
-          while read -r repo; do
-            echo "| $repo |"  >> summary.md
-          done < clean-repos.txt
-
-          rm *.tmp
-}
-
 aggregate() {
     mkdir -p $ARTIFACT_DIR/aggregate-results
     for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
@@ -216,5 +89,4 @@ aggregate() {
 ###############################
 
 create_table
-breakdown
 aggregate
