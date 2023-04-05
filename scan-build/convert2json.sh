@@ -3,8 +3,10 @@ export REPO=$1
 export OUTPUT=$2
 export SREPO=$(echo $REPO | tr '/' .)
 
-if [ $# -ne 2 ]; then
-    echo "Specify '{owner}/{repo}' and folder where scan-build.sh results are"
+[[ -z $OUTPUT ]] && OUTPUT="$PWD/$SREPO"
+
+if [ -z $REPO ]; then
+    echo "Specify repo (ie. {owner}/{repo})"
     exit 1
 fi
 
@@ -22,6 +24,8 @@ if [ ! -f $OUTPUT/cognitive-complexity.log ]; then
     echo "Specified folder doesn't have cognitive complexity results"
     exit 1
 fi
+
+echo "Converting to JSON. REPO: $REPO. OUTPUT: $OUTPUT"
 
 ######
 
@@ -47,7 +51,7 @@ generate_json() {
             bugline=$(parse_info $f BUGLINE)
             bugdescription=$(parse_info $f BUGDESC)
             bugfunction=$(parse_info $f FUNCTIONNAME)
-            report=$(echo -n $f | sed "s/${OUTPUT}\/scan-build-result\///")
+            report=$(echo -n $f | awk -F'scan-build-result/' '{ print $2 }')
 
             JSON+="{"
             JSON+=" \"category\": \"$bugcategory\","
@@ -125,6 +129,8 @@ generate_json() {
           JSON="${JSON%?}" # Remove last ","
           JSON+="]}"
           echo $JSON > $OUTPUT/$SREPO.scan-build.json
+
+        echo "Convert2json success $OUTPUT/$SREPO.scan-build.json"
 }
 
 ######

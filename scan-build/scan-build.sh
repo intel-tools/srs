@@ -1,26 +1,71 @@
 #!/bin/bash
 set -o pipefail
 
-export REPO=${1:-"scan-build-result"}
-export LLVM_VERSION=${2:-"15"}
-export TIMEOUT=${3:-"30m"}
+usage() { echo "Usage: $0 [-r <owner/repo>] [-l <llvm_version>] [-t <timeout>] [-b <error-on-bugs (0/1)>]" 1>&2; exit 1; }
 
-export SREPO=$(echo $REPO | tr '/' .)
-export OUTPUT=/work/$SREPO
+WORKDIR=$PWD
+[[ -d /work ]] && WORKDIR="/work"
+[[ -d /github/workspace ]] && WORKDIR="/github/workspace"
+
+OUTPUT="$WORKDIR/scan-build-result"
+LLVM_VERSION="15"
+TIMEOUT="30m"
+ERROR_ON_BUGS="0"
+REPO="placeholder"
+SREPO="placeholder"
+
+if [ ! -z $GITHUB_REPOSITORY ]; then
+    REPO="$GITHUB_REPOSITORY_OWNER/$GITHUB_REPOSITORY"
+    SREPO="$GITHUB_REPOSITORY_OWNER.$GITHUB_REPOSITORY"
+fi
+
+while getopts ":r:l:t:b:" o; do
+    case "${o}" in
+        r)
+            [[ ${OPTARG} == "placeholder" ]] && continue
+
+            REPO=${OPTARG}
+            SREPO=$(echo $REPO | tr '/' .)
+            OUTPUT=$WORKDIR/$SREPO
+            ;;
+        l)
+            LLVM_VERSION=${OPTARG}
+            ;;
+        t)
+            TIMEOUT=${OPTARG}
+            ;;
+        b)
+            ERROR_ON_BUGS=${OPTARG}
+            ;;
+        *)
+            usage
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+echo "Setting options:"
+echo "  WORKDIR: $WORKDIR"
+echo "  OUTPUT: $OUTPUT"
+echo "  REPO: $REPO"
+echo "  TIMEOUT: $TIMEOUT"
+echo "  ERROR_ON_BUGS: $ERROR_ON_BUGS"
+
+##############
 
 find_autoconf_builddir() {
   local search="configure autogen.sh bootstrap.sh bootstrap boot buildconf configure.ac"
-  touch /work/build_autoconf
+  touch $OUTPUT/build_autoconf
 
   for f in $search; do
     local dir=$(find . -iname "$f" -type f -printf '%h\n')
     for d in $dir; do
-      if [ $(grep "$PWD/$d" /work/build_autoconf | wc -l) -eq 0 ]; then
+      if [ $(grep "$PWD/$d" $OUTPUT/build_autoconf | wc -l) -eq 0 ]; then
         ODIR=$PWD
         cd $d
         s=$(find . -iname "$f" -type f | head -n1 | awk -F'/' '{ print $2 }')
         echo "Found $s in $PWD"
-        echo "$PWD $s" >> /work/build_autoconf
+        echo "$PWD $s" >> $OUTPUT/build_autoconf
         cd $ODIR
       fi
     done
@@ -29,7 +74,7 @@ find_autoconf_builddir() {
 
 find_cmake_builddir() {
   local search="CMakeLists.txt"
-  touch /work/build_cmake
+  touch $OUTPUT/build_cmake
 
   for f in $search; do
     local dir=$(find . -iname "$f" -type f -printf '%h\n')
@@ -38,7 +83,7 @@ find_cmake_builddir() {
       project=$(grep 'project(' ${d}/${f} | wc -l)
       if [ ${project} -gt 0 ]; then
         echo "Top level $f found at ${d}/${f}"
-        echo "$PWD/$d $f" >> /work/build_cmake
+        echo "$PWD/$d $f" >> $OUTPUT/build_cmake
       fi
     done
   done
@@ -46,7 +91,7 @@ find_cmake_builddir() {
 
 find_meson_builddir() {
   local search="meson.build"
-  touch /work/build_meson
+  touch $OUTPUT/build_meson
 
   for f in $search; do
     local dir=$(find . -iname "$f" -type f -printf '%h\n')
@@ -54,7 +99,7 @@ find_meson_builddir() {
       project=$(grep 'project(' "$d/$f" | wc -l)
       if [ $project -gt 0 ]; then
         echo "Found $f in $PWD/$d"
-        echo "$PWD/$d $f" >> /work/build_meson
+        echo "$PWD/$d $f" >> $OUTPUT/build_meson
       fi
     done
   done
@@ -168,7 +213,7 @@ scan_build_autoconf() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/scan-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -179,7 +224,7 @@ scan_build_autoconf() {
 
             touch $dir/scan-build-done
 
-          done < /work/build_autoconf
+          done < $OUTPUT/build_autoconf
 }
 
 scan_build_cmake() {
@@ -215,7 +260,7 @@ scan_build_cmake() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/analyze-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -226,7 +271,7 @@ scan_build_cmake() {
 
             touch $dir/scan-build-done
 
-          done < /work/build_cmake
+          done < $OUTPUT/build_cmake
 }
 
 scan_build_meson() {
@@ -259,7 +304,7 @@ scan_build_meson() {
 
             timeout -s 2 ${TIMEOUT} \
             /usr/bin/time -p -o ${OUTPUT}/analyze-build-time \
-            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code --html-title $SREPO -o ${OUTPUT}/scan-build-result \
+            analyze-build-${LLVM_VERSION} -v --cdb compile_commands.json --no-failure-reports --analyze-headers --force-analyze-debug-code -o ${OUTPUT}/scan-build-result \
               --analyzer-config crosscheck-with-z3=true \
               --disable-checker deadcode.DeadStores \
               --enable-checker security.FloatLoopCounter \
@@ -270,7 +315,7 @@ scan_build_meson() {
 
             touch $dir/scan-build-done
 
-          done < /work/build_meson
+          done < $OUTPUT/build_meson
 }
 
 scan_build() {
@@ -289,15 +334,37 @@ scan_build() {
 
 ######
 
-echo "Received input: $REPO"
-
 mkdir -p $OUTPUT
 
-cd /work
+cd $WORKDIR
 
 find_builddirs
 search_and_install_dependencies
 get_submodules
 scan_build
 
+[[ ! -f /convert2json.sh ]] && exit 0
+
+/convert2json.sh "${REPO}" "${OUTPUT}"
+
 chmod -R +r $OUTPUT
+
+if [ ! -f $OUTPUT/$SREPO.scan-build.json ]; then
+    echo "Converting to JSON failed"
+    exit 1
+fi
+
+if [ ! -z $GITHUB_OUTPUT ]; then
+    JSON=$(cat $OUTPUT/$SREPO.scan-build.json)
+    echo "json=${JSON}" >> $GITHUB_OUTPUT
+else
+    jq '.' $OUTPUT/$SREPO.scan-build.json
+fi
+
+if [ $ERROR_ON_BUGS != "0" ]; then
+    BUGCOUNT=$(jq '.bugs | length' $OUTPUT/$SREPO.scan-build.json)
+    if [ $BUGCOUNT -gt 0 ]; then
+        echo "Found $BUGCOUNT bugs."
+        exit 1
+    fi
+fi

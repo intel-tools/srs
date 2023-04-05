@@ -85,10 +85,10 @@ jobs:
 
       - name: Build production image
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
-          context: .
-          file: scan-build/Dockerfile
+          context: ./scan-build
+          file: ./scan-build/Dockerfile
           tags: scan-build:latest
           outputs: type=docker,dest=scan-build.tar
           cache-from: type=gha
@@ -99,17 +99,13 @@ jobs:
 
       - name: scan-build
         timeout-minutes: 300
-        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build "${{ inputs.repo }}" "$LLVM_VERSION" "$TIMEOUT"
+        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build -r "${{ inputs.repo }}" -l "$LLVM_VERSION" -t "$TIMEOUT"
 
       - name: fix permissions
         if: ${{ always() }}
         run: |
           USER=$(whoami)
           sudo chown -R $USER.$USER ${{ steps.vars.outputs.SREPO }}
-
-      - name: convert to json
-        if: ${{ always() }}
-        run: ./scan-build/convert2json.sh ${{ inputs.repo }} ${{ steps.vars.outputs.SREPO }}
 
       - name: Adding scan summary to Github markdown
         if: ${{ always() }}
