@@ -1,0 +1,36 @@
+name: 'scan-build-action'
+description: 'Run clang scan-build'
+inputs:
+  repository:
+    description: '{owner}/{repo}'
+    required: false
+    default: 'placeholder'
+  error-on-bugs:
+    description: 'Error if bug(s) found'
+    required: false
+    default: '0'
+  timeout:
+    description: 'Error if bug(s) found'
+    required: false
+    default: '30m'
+  llvm-version:
+    description: 'LLVM version to use'
+    required: false
+    default: '15'
+outputs:
+  bugs:
+    description: 'The number of bugs found during the scan'
+  json:
+    description: 'The json formatted results of the scan'
+runs:
+  using: 'docker'
+  image: 'scan-build/Dockerfile'
+  args:
+    - '-r'
+    - ${{ inputs.repository }}
+    - '-b'
+    - ${{ inputs.error-on-bugs }}
+    - '-t'
+    - ${{ inputs.timeout }}
+    - '-l'
+    - ${{ inputs.llvm-version }}

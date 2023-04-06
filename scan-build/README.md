@@ -101,7 +101,9 @@ jobs:
           repository: ${{ github.repository }}
 
      - name: create scan-build-result tarball
-       run: tar czvf scan-build-result.tar.gz scan-build-result
+       run: |
+         sudo chown -R $USER.$USER scan-build-result
+         tar czvf scan-build-result.tar.gz scan-build-result
 
      - name: save results
        uses: actions/upload-artifact@v3
