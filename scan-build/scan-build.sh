@@ -491,3 +491,5 @@ if [ $ERROR_ON_BUGS != "0" ]; then
         exit 1
     fi
 fi
+
+[[ -f $OUTPUT/placeholder.scan-build.json ]] && mv $OUTPUT/placeholder.scan-build.json $OUTPUT/scan-build.json
