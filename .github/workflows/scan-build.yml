@@ -107,28 +107,8 @@ jobs:
           USER=$(whoami)
           sudo chown -R $USER.$USER ${{ steps.vars.outputs.SREPO }}
 
-      - name: Adding scan summary to Github markdown
-        if: ${{ always() }}
-        env:
-          SREPO: ${{ steps.vars.outputs.SREPO }}
-        run: |
-          bugs=$(jq '.bugs | length' $SREPO/$SREPO.scan-build.json)
-          functions=$(jq '.functions | length' $SREPO/$SREPO.scan-build.json)
-
-          [[ ${bugs} -eq 0 ]] && exit 0
-
-          echo "### ${{ inputs.repo }}: ${bugs} bugs found" >> $SREPO/summary.md
-          echo "### Functions: $functions" >> $SREPO/summary.md
-          echo "#### Bug categories" >> $SREPO/summary.md
-          echo "| Category | Count |" >> $SREPO/summary.md
-          echo "| --- | --- |" >> $SREPO/summary.md
-          jq '.categories[] | "| \(.category) | \(.count) |"' $SREPO/$SREPO.scan-build.json | tr -d '"' >> $SREPO/summary.md
-          echo "#### Bug types" >> $SREPO/summary.md
-          echo "| Type | Count |" >> $SREPO/summary.md
-          echo "| --- | --- |" >> $SREPO/summary.md
-          jq '.types[] | "| \(.type) | \(.count) |"' $SREPO/$SREPO.scan-build.json | tr -d '"' >> $SREPO/summary.md
-
-          cat $SREPO/summary.md >> $GITHUB_STEP_SUMMARY
+      - name: post summary
+        run: cat ${{ steps.vars.outputs.SREPO }}/summary.md >> $GITHUB_STEP_SUMMARY
 
       - name: compress result
         if: ${{ always() }}

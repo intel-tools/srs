@@ -332,6 +332,131 @@ scan_build() {
     fi
 }
 
+parse_info() {
+  local f=$1
+  local d=$2
+  grep $d $f | awk -F "$d " '{ print $2 }' | rev | cut -c5- | rev | tr '"' "'"
+}
+
+generate_json() {
+          bugfound=0
+          now=$(date)
+          functions=$(cat ${OUTPUT}/cognitive-complexity.log 2>/dev/null | wc -l)
+
+          JSON="{ \"repo\": \"$REPO\", \"scan-date\": \"$now\", \"functions\": $functions, \"bugs\": ["
+
+          for f in $(find ${OUTPUT}/scan-build-result -type f -name '*.html' | grep report); do
+            bugfound=1
+            bugtype=$(parse_info $f BUGTYPE)
+            bugcategory=$(parse_info $f BUGCATEGORY)
+            bugfile=$(parse_info $f BUGFILE)
+            bugline=$(parse_info $f BUGLINE)
+            bugdescription=$(parse_info $f BUGDESC)
+            bugfunction=$(parse_info $f FUNCTIONNAME)
+            report=$(echo -n $f | awk -F'scan-build-result/' '{ print $2 }')
+
+            JSON+="{"
+            JSON+=" \"category\": \"$bugcategory\","
+            JSON+=" \"type\": \"$bugtype\","
+            JSON+=" \"file\": \"$bugfile\","
+            JSON+=" \"line\": $bugline,"
+            JSON+=" \"function\": \"$bugfunction\","
+            JSON+=" \"description\": \"$bugdescription\","
+            JSON+=" \"report\": \"$report\""
+            JSON+=" },"
+          done
+
+          if [ -f ${OUTPUT}/cognitive-complexity.log ]; then
+            while read -r line; do
+              bugtype="Cognitive complexity"
+              bugcategory="Readability"
+              bugfile=$(echo $line | awk -F":" '{ print $1 }')
+              bugline=$(echo $line | awk -F":" '{ print $2 }')
+              bugfunction=$(echo $line | awk -F"function" '{ print $2 }' | awk '{ print $1 }' | sed "s/'//g")
+              bugdescription=$(echo $line | awk -F"cognitive complexity of" '{ print $2 }' | awk '{ print $1 }')
+
+              [[ $bugdescription -lt 25 ]] && continue
+
+              bugfound=1
+
+              JSON+="{"
+              JSON+=" \"category\": \"$bugcategory\","
+              JSON+=" \"type\": \"$bugtype\","
+              JSON+=" \"file\": \"$bugfile\","
+              JSON+=" \"line\": $bugline,"
+              JSON+=" \"function\": \"$bugfunction\","
+              JSON+=" \"description\": \"$bugdescription\""
+              JSON+=" },"
+            done < ${OUTPUT}/cognitive-complexity.log
+          fi
+
+          if [ $bugfound -eq 1 ]; then
+            JSON="${JSON%?}" # Remove last ","
+          fi
+
+          JSON+="]"
+          JSON+="}"
+
+          echo $JSON > $OUTPUT/$SREPO.scan-build.json
+
+          if [ $bugfound -eq 0 ]; then
+            exit 0
+          fi
+
+          jq '.bugs[].category' $OUTPUT/$SREPO.scan-build.json | sort | uniq -c > $OUTPUT/bug-categories.txt
+          jq '.bugs[].type' $OUTPUT/$SREPO.scan-build.json | sort | uniq -c > $OUTPUT/bug-types.txt
+
+          JSON="${JSON%?}" # Remove last "}"
+          JSON+=","
+
+          JSON+="\"categories\": ["
+
+          while read -r line; do
+            c=$(echo $line | awk -F ' ' '{ print $1 }')
+            d=$(echo $line | awk -F '"' '{ print $2 }')
+
+            JSON+="{\"category\": \"$d\", \"count\": $c },"
+          done < $OUTPUT/bug-categories.txt
+
+          JSON="${JSON%?}" # Remove last ","
+          JSON+="],\"types\":["
+
+          while read -r line; do
+            c=$(echo $line | awk -F ' ' '{ print $1 }')
+            d=$(echo $line | awk -F '"' '{ print $2 }')
+
+            JSON+="{\"type\": \"$d\", \"count\": $c },"
+          done < $OUTPUT/bug-types.txt
+
+          JSON="${JSON%?}" # Remove last ","
+          JSON+="]}"
+          echo $JSON > $OUTPUT/$SREPO.scan-build.json
+}
+
+make_markdown_summary() {
+    bugs=$(jq '.bugs | length' $OUTPUT/$SREPO.scan-build.json)
+    complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $OUTPUT/$SREPO.scan-build.json | wc -l)
+    bugs=$(( bugs - complex_functions ))
+    functions=$(jq '.functions | length' $OUTPUT/$SREPO.scan-build.json)
+    percent=$(echo "scale=2; $complex_functions / $functions * 100" | bc)
+
+    echo "### $REPO: ${bugs} bugs found" >> $OUTPUT/summary.md
+    echo "### Cognitively complex functions: $complex_functions (${percent}%)" >> $OUTPUT/summary.md
+
+    [[ ${bugs} -eq 0 ]] && exit 0
+
+    echo "#### Bug categories" >> $OUTPUT/summary.md
+    echo "| Category | Count |" >> $OUTPUT/summary.md
+    echo "| --- | --- |" >> $OUTPUT/summary.md
+    jq '.categories[] | "| \(.category) | \(.count) |"' $OUTPUT/$SREPO.scan-build.json | tr -d '"' >> $OUTPUT/summary.md
+    echo "#### Bug types" >> $OUTPUT/summary.md
+    echo "| Type | Count |" >> $OUTPUT/summary.md
+    echo "| --- | --- |" >> $OUTPUT/summary.md
+    jq '.types[] | "| \(.type) | \(.count) |"' $OUTPUT/$SREPO.scan-build.json | tr -d '"' >> $OUTPUT/summary.md
+
+    [[ ! -z $GITHUB_STEP_SUMMARY ]] && cat $OUTPUT/summary.md >> $GITHUB_STEP_SUMMARY
+}
+
 ######
 
 mkdir -p $OUTPUT
@@ -342,10 +467,8 @@ find_builddirs
 search_and_install_dependencies
 get_submodules
 scan_build
-
-[[ ! -f /convert2json.sh ]] && exit 0
-
-/convert2json.sh "${REPO}" "${OUTPUT}"
+generate_json
+make_markdown_summary
 
 chmod -R +r $OUTPUT
 
