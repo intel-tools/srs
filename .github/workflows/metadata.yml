@@ -1,3 +1,4 @@
+name: Collect metadata about repository and lines-of-code
 on:
   workflow_call:
     inputs:

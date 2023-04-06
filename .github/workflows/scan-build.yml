@@ -1,3 +1,4 @@
+name: Run clang scan-build and clang-tidy cognitive complexity analysis
 on:
   workflow_dispatch:
     inputs:

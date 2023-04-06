@@ -1,3 +1,4 @@
+name: Run OSSF Scorecard
 on:
   workflow_dispatch:
     inputs:
