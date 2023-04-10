@@ -6,44 +6,103 @@ complexity analysis on all functions found in the project during build.
 
 ### scan-build.sh
 
-This script is set as the ENTRYPOINT for the Docker image and takes three inputs. It expects a
+This script is set as the ENTRYPOINT for the Docker image. It expects a
 shared folder to be mounted at /work with the code to be scanned placed inside.
 
 Inputs:
 
 ```
-$1: Name of the repository in {owner}/{repo} format (for example "intel/srs").
-$2: LLVM version to use, default is 15
-$3: Timeout value for each scan , default is "30m"
+-r: Name of the repository in {owner}/{repo} format (for example "intel/srs").
+-l: LLVM version to use, default is 15
+-t: Timeout value for each scan , default is "30m"
+-o: Name of the folder to use for storing the results
 ```
 
 Outputs:
 
 The scan-build HTMLs will placed in the shared host folder at /work/{owner}.{repo}/scan-build-result or
-if no name has been specified at /work/scan-build-result/scan-build-result
+if no name has been specified at /work/scan-build-result/scan-build-result.
 
-The clang-tidy cognitive complexity log will be in cognitive-complexity.log in the result folder
+The clang-tidy cognitive complexity log will be in cognitive-complexity.log in the result folder.
 
-### convert2json.sh
+A combined json of the scan-build results and the cognitive complexity analysis will be in scan-build.json.
 
-Given a folder containing scan-build.sh results convert the HTML and cognitive complexity reports to JSON.
-
-Input:
-```
-$1: Repo (ie. {owner}/{repo})
-$2: Folder containing scan-build.sh output (ie. {owner}.{repo})
-```
-
-The resulting JSON will be placed in the input folder as `{owner}.{repo}.scan-build.json`.
-
-### Build it:
+### Build it
 
 ```
-docker build . -f scan-build/Dockerfile -t scan-build
+cd scan-build
+docker build . -t scan-build
 ```
 
-### Run it:
+### Run it
 
 ```
-docker run -v $WORKDIR:/work scan-build "owner/repo"
+docker run -v $FOLDER_CONTAINING_REPOSITORY:/work scan-build
+```
+
+### Use it as a GitHub Action
+
+#### Inputs (all optional)
+
+ - `repository`: {owner}/{repo} (for example `${{ github.repository }}`)
+ - `error-on-bugs`: Make action exit with error code in case bugs were found
+ - `timeout`: limit how long scan-build process runs (default: 30m)
+ - `llvm-version`: version of clang to use (default: 15)
+
+#### Output
+ - `json`: The json formatted results of the scan-build and cognitive complexity analysis
+
+#### Defining additional build-steps
+
+In case your repository needs additional packages and/or build preparation steps
+before scan-build you can add a `bootstrap.sh` script which will be run in the
+Docker container before scan-build.
+
+#### Example workflows
+
+The simplest way is to run the scan and error on any bugs found
+
+```
+name: Intel SRS scan-build action using clang
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: intel/srs@scan-build-action-v1
+        with:
+          error-on-bugs: 1
+```
+
+You can also save the results if you prefer:
+
+```
+name: Intel SRS scan-build action using clang
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: intel/srs@scan-build-action-v1
+        with:
+          repository: ${{ github.repository }}
+
+     - name: save scan-build result
+       run: tar czvf scan-build-result.tar.gz scan-build-result
+
+     - uses: actions/upload-artifact@v3
+       with:
+         name: ${{github.repository }}.scan-build-result
+         path: scan-build-result.tar.gz
+
+    - name: error if bug(s) found
+      run: [[ $(jq '.bugs | length' scan-build-result/scan-build.json) -gt 0 ]] && exit 1
 ```
