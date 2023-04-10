@@ -50,6 +50,7 @@ echo "  OUTPUT: $OUTPUT"
 echo "  REPO: $REPO"
 echo "  TIMEOUT: $TIMEOUT"
 echo "  ERROR_ON_BUGS: $ERROR_ON_BUGS"
+echo "  FINAL_USER: $FINAL_USER"
 
 ##############
 
