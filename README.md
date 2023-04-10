@@ -22,7 +22,7 @@ The repository can be forked and the existing scans replaced or new ones added. 
 
 1. Create a workflow YAML file under `.github/workflows/my-new-scan.yml` with the following required inputs:
 
-```
+```yaml
 on:
   workflow_call:
     inputs:
@@ -45,7 +45,7 @@ For steps you can define whatever is needed to perform the scan as you would wit
 
 2. Add call to the new workflow in `.github/workflows/srs.yml`:
 
-```
+```yaml
   my-new-scan:
     needs: matrix
     secrets: inherit
@@ -59,14 +59,14 @@ For steps you can define whatever is needed to perform the scan as you would wit
 
 3. Add the new scan to the `next` job's `needs` list:
 
-```
+```yaml
 next:
     needs: [scan-build, ossf-scorecard, metadata, my-new-scan]
 ```
 
 4. Add the scan's result file (for example `my-new-scan.results.zip`) to the `aggregate` function in `query/summary.sh`.
 
-```
+```bash
     for f in $(find $ARTIFACT_DIR -type f -name '*.my-new-scan.results.zip'); do
         cp $f $ARTIFACT_DIR/aggregate-results/ || :
     done
