@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y \
     meson ninja-build nasm yasm \
     cmake cmake-data cmake-extras \
     gettext bison flex libtool libssl-dev \
-    wget curl libz3-dev time jq tar sudo \
+    wget curl libz3-dev time jq tar sudo bc \
     python3 libpython3-dev libboost-all-dev \
     gnupg lsb-release software-properties-common git \
     clang-15 clang-tools-15 clang-tidy-15 \

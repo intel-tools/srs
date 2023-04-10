@@ -109,7 +109,10 @@ jobs:
 
       - name: scan-build
         timeout-minutes: 300
-        run: docker run -v "$GITHUB_WORKSPACE":/work scan-build -r "${{ inputs.repo }}" -l "$LLVM_VERSION" -t "$TIMEOUT" -o "${{ steps.vars.outputs.SREPO }}"
+        run: docker run -v "$GITHUB_WORKSPACE/repo":/work scan-build -r "${{ inputs.repo }}" -l "$LLVM_VERSION" -t "$TIMEOUT" -o "${{ steps.vars.outputs.SREPO }}"
+
+      - name: move results
+        run: mv $GITHUB_WORKSPACE/repo/${{ steps.vars.outputs.SREPO }} $GITHUB_WORKSPACE
 
       - name: post summary
         run: cat ${{ steps.vars.outputs.SREPO }}/summary.md >> $GITHUB_STEP_SUMMARY
