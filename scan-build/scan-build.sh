@@ -1,7 +1,7 @@
 #!/bin/bash
 set -o pipefail
 
-usage() { echo "Usage: $0 [-r <owner/repo>] [-l <llvm_version>] [-t <timeout>] [-b <error-on-bugs (0/1)>]" 1>&2; exit 1; }
+usage() { echo "Usage: $0 [-r <owner/repo>] [-o <output_folder>] [-l <llvm_version>] [-t <timeout>] [-b <error-on-bugs (0/1)>]" 1>&2; exit 1; }
 
 WORKDIR=$PWD
 [[ -d /work ]] && WORKDIR="/work"
@@ -19,14 +19,11 @@ if [ ! -z $GITHUB_REPOSITORY ]; then
     SREPO="$GITHUB_REPOSITORY_OWNER.$GITHUB_REPOSITORY"
 fi
 
-while getopts ":r:l:t:b:" o; do
+while getopts ":r:l:t:b:o:" o; do
     case "${o}" in
         r)
-            [[ ${OPTARG} == "placeholder" ]] && continue
-
             REPO=${OPTARG}
             SREPO=$(echo $REPO | tr '/' .)
-            OUTPUT=$WORKDIR/$SREPO
             ;;
         l)
             LLVM_VERSION=${OPTARG}
@@ -36,6 +33,9 @@ while getopts ":r:l:t:b:" o; do
             ;;
         b)
             ERROR_ON_BUGS=${OPTARG}
+            ;;
+        o)
+            OUTPUT=$WORKDIR/${OPTARG}
             ;;
         *)
             usage
@@ -437,7 +437,7 @@ make_markdown_summary() {
     bugs=$(jq '.bugs | length' $OUTPUT/$SREPO.scan-build.json)
     complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $OUTPUT/$SREPO.scan-build.json | wc -l)
     bugs=$(( bugs - complex_functions ))
-    functions=$(jq '.functions | length' $OUTPUT/$SREPO.scan-build.json)
+    functions=$(jq '.functions' $OUTPUT/$SREPO.scan-build.json)
     percent=$(echo "scale=2; $complex_functions / $functions * 100" | bc)
 
     echo "### $REPO: ${bugs} bugs found" >> $OUTPUT/summary.md
@@ -457,10 +457,41 @@ make_markdown_summary() {
     [[ ! -z $GITHUB_STEP_SUMMARY ]] && cat $OUTPUT/summary.md >> $GITHUB_STEP_SUMMARY
 }
 
+finalize() {
+    if [ ! -f $OUTPUT/$SREPO.scan-build.json ]; then
+        echo "Converting to JSON failed"
+        exit 1
+    fi
+
+    if [ ! -z $GITHUB_OUTPUT ]; then
+        JSON=$(cat $OUTPUT/$SREPO.scan-build.json)
+        echo "json=${JSON}" >> $GITHUB_OUTPUT
+    else
+        jq '.' $OUTPUT/$SREPO.scan-build.json
+    fi
+
+    if [ $ERROR_ON_BUGS != "0" ]; then
+        BUGCOUNT=$(jq '.bugs | length' $OUTPUT/$SREPO.scan-build.json)
+        if [ $BUGCOUNT -gt 0 ]; then
+            echo "Found $BUGCOUNT bugs."
+            exit 1
+        fi
+    fi
+
+    if [ -f $OUTPUT/placeholder.scan-build.json ]; then
+        mv $OUTPUT/placeholder.scan-build.json $OUTPUT/scan-build.json
+    fi
+
+    chmod -R +r $OUTPUT
+    if [ ! -z $FINAL_USER ]; then
+        echo "Changing ownership of results folder $OUTPUT to $FINAL_USER"
+        chown -R $FINAL_USER:$FINAL_GROUP_ID $OUTPUT
+    fi
+}
+
 ######
 
 mkdir -p $OUTPUT
-
 cd $WORKDIR
 
 find_builddirs
@@ -469,27 +500,6 @@ get_submodules
 scan_build
 generate_json
 make_markdown_summary
+finalize
 
-chmod -R +r $OUTPUT
-
-if [ ! -f $OUTPUT/$SREPO.scan-build.json ]; then
-    echo "Converting to JSON failed"
-    exit 1
-fi
-
-if [ ! -z $GITHUB_OUTPUT ]; then
-    JSON=$(cat $OUTPUT/$SREPO.scan-build.json)
-    echo "json=${JSON}" >> $GITHUB_OUTPUT
-else
-    jq '.' $OUTPUT/$SREPO.scan-build.json
-fi
-
-if [ $ERROR_ON_BUGS != "0" ]; then
-    BUGCOUNT=$(jq '.bugs | length' $OUTPUT/$SREPO.scan-build.json)
-    if [ $BUGCOUNT -gt 0 ]; then
-        echo "Found $BUGCOUNT bugs."
-        exit 1
-    fi
-fi
-
-[[ -f $OUTPUT/placeholder.scan-build.json ]] && mv $OUTPUT/placeholder.scan-build.json $OUTPUT/scan-build.json
+exit 0
