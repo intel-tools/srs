@@ -470,12 +470,15 @@ finalize() {
         jq '.' $OUTPUT/$SREPO.scan-build.json
     fi
 
-    if [ $ERROR_ON_BUGS != "0" ]; then
-        BUGCOUNT=$(jq '.bugs | length' $OUTPUT/$SREPO.scan-build.json)
-        if [ $BUGCOUNT -gt 0 ]; then
-            echo "Found $BUGCOUNT bugs."
-            exit 1
-        fi
+    BUGCOUNT=$(jq '.bugs | length' $OUTPUT/$SREPO.scan-build.json)
+
+    if [ ! -z $GITHUB_OUTPUT ]; then
+        echo "bugs=${BUGCOUNT}" >> $GITHUB_OUTPUT
+    fi
+
+    if [ $ERROR_ON_BUGS != "0" ] && [ $BUGCOUNT -gt 0 ]; then
+        echo "Found $BUGCOUNT bugs."
+        exit 1
     fi
 
     if [ -f $OUTPUT/placeholder.scan-build.json ]; then

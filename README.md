@@ -3,8 +3,8 @@
 GitHub Actions based repository scanning workflows with a primary goal of evaluating C & C++ repositories for risks.
 
 Current scans being performed:
- - [clang's scan-build](https://clang-analyzer.llvm.org/scan-build.html): Detect common C & C++ bugs with low false-positive rate
- - [clang-tidy cognitive complexity](https://clang.llvm.org/extra/clang-tidy/checks/readability/function-cognitive-complexity.html): Calculate readability score for every function
+ - [clang's scan-build](https://clang-analyzer.llvm.org/scan-build.html): Detect common C & C++ bugs with low false-positive rate. [More details on how to integrate this scan into your CI using GitHub Actions](scan-build).
+ - [clang-tidy cognitive complexity](https://clang.llvm.org/extra/clang-tidy/checks/readability/function-cognitive-complexity.html): Calculate readability score for every function. [More details on how to integrate this scan into your CI using GitHub Actions](scan-build).
  - [OSSF Scorecard](https://github.com/ossf/scorecard): Measure software development practices
  - [CLoC](https://github.com/AlDanial/cloc): Calculate lines of code
 
