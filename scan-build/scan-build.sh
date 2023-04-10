@@ -449,11 +449,11 @@ make_markdown_summary() {
     echo "#### Bug categories" >> $OUTPUT/summary.md
     echo "| Category | Count |" >> $OUTPUT/summary.md
     echo "| --- | --- |" >> $OUTPUT/summary.md
-    jq '.categories[] | "| \(.category) | \(.count) |"' $OUTPUT/$SREPO.scan-build.json | tr -d '"' >> $OUTPUT/summary.md
+    jq -r '.categories[] | select( any(.; .category != "Readability") ) | "| \(.category) | \(.count) |"' $OUTPUT/$SREPO.scan-build.json >> $OUTPUT/summary.md
     echo "#### Bug types" >> $OUTPUT/summary.md
     echo "| Type | Count |" >> $OUTPUT/summary.md
     echo "| --- | --- |" >> $OUTPUT/summary.md
-    jq '.types[] | "| \(.type) | \(.count) |"' $OUTPUT/$SREPO.scan-build.json | tr -d '"' >> $OUTPUT/summary.md
+    jq -r '.types[] | select( any(.; .type != "Cognitive complexity") ) | "| \(.type) | \(.count) |"' $OUTPUT/$SREPO.scan-build.json >> $OUTPUT/summary.md
 
     [[ ! -z $GITHUB_STEP_SUMMARY ]] && cat $OUTPUT/summary.md >> $GITHUB_STEP_SUMMARY
 }

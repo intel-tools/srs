@@ -76,7 +76,7 @@ jobs:
 
   next:
     needs: [scan-build, ossf-scorecard, metadata]
-    if: ${{ always() }}
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GHPAT }}
