@@ -50,7 +50,6 @@ echo "  OUTPUT: $OUTPUT"
 echo "  REPO: $REPO"
 echo "  TIMEOUT: $TIMEOUT"
 echo "  ERROR_ON_BUGS: $ERROR_ON_BUGS"
-echo "  FINAL_USER: $FINAL_USER"
 
 ##############
 
@@ -487,10 +486,6 @@ finalize() {
     fi
 
     chmod -R +r $OUTPUT
-    if [ ! -z $FINAL_USER ]; then
-        echo "Changing ownership of results folder $OUTPUT to $FINAL_USER"
-        chown -R $FINAL_USER:$FINAL_GROUP_ID $OUTPUT
-    fi
 }
 
 ######

@@ -35,7 +35,6 @@ jobs:
     env:
       LLVM_VERSION: "15"
       TIMEOUT: "260m"
-      DISTRO: "debian:testing-slim"
 
     defaults:
       run:
@@ -58,13 +57,8 @@ jobs:
         id: vars
         run: |
           srepo=$(echo ${{ inputs.repo }} | tr '/' .)
-
           echo "SREPO set to ${SREPO}"
           echo "SREPO=$srepo" >> $GITHUB_OUTPUT
-          echo "USER=$(whoami)" >> $GITHUB_OUTPUT
-          echo "USER_ID=$(id -u)" >> $GITHUB_OUTPUT
-          echo "GROUP_ID=$(id -g)" >> $GITHUB_OUTPUT
-          echo "DISTRO=$DISTRO" >> $GITHUB_OUTPUT
 
       - name: checkout repo
         uses: actions/checkout@v3
@@ -99,11 +93,6 @@ jobs:
           outputs: type=docker,dest=scan-build.tar
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: |
-            DISTRO=${{ steps.vars.outputs.DISTRO }}
-            USER=${{ steps.vars.outputs.USER }}
-            USER_ID=${{ steps.vars.outputs.USER_ID }}
-            GROUP_ID=${{ steps.vars.outputs.GROUP_ID }}
       - name: Load image
         run: docker load -i scan-build.tar
 
