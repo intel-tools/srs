@@ -84,11 +84,6 @@ jobs:
 
           echo "## Repositories with supported build systems: $COUNT" >> query-summary.md
 
-      - name: record run id
-        run: |
-          echo "Github Actions Run ID: [${{ github.run_id }}](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)" >> query-summary.md
-          echo "---" >> summary.md
-
       - name: Github step summary
         run: cat query-summary.md >> $GITHUB_STEP_SUMMARY
 

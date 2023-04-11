@@ -1,5 +1,6 @@
 #!/bin/bash
 ARTIFACT_DIR=${1:-"."}
+RUD_IDS=$2
 
 create_table() {
           echo "" > summary.md
@@ -22,6 +23,17 @@ create_table() {
           echo "" >> summary.md
           echo "***" >> summary.md
           echo "" >> summary.md
+
+          if [ ! -z $RUN_IDS ]; then
+            echo -n "GitHub Action Run IDS: " >> summary.md
+            for r in $(echo $RUN_IDS | tr ',' ' '); do
+                echo -n "[$r](https://github.com/intel/srs/actions/runs/$r) " >> summary.md
+            done
+            echo "" >> summary.md
+            echo "" >> summary.md
+            echo "***" >> summary.md
+            echo "" >> summary.md
+          fi
 
           echo "### Breakdown" >> summary.md
 

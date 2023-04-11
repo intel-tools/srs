@@ -37,7 +37,7 @@ jobs:
         run: ./query/download-artifacts.sh "${{ inputs.run-ids }}"
 
       - name: Summarize results
-        run: ./query/summary.sh "${{ steps.vars.outputs.firstid }}"
+        run: ./query/summary.sh "${{ steps.vars.outputs.firstid }}" "${{ inputs.run-ids }}"
 
       - name: Github step summary
         run: cat summary.md >> $GITHUB_STEP_SUMMARY
