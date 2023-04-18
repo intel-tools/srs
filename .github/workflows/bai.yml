@@ -1,0 +1,146 @@
+name: Run BinAbsInspector on compiled binaries
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        default: ''
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
+
+  workflow_call:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        default: ''
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
+    secrets:
+      GHPAT:
+        required: true
+
+jobs:
+  bai:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: rate limit
+        env:
+          GHPAT: ${{ secrets.GHPAT }}
+        run: |
+          rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+          echo "Rate limit remaining: $rl"
+          while [ $rl -lt ${{ inputs.rate-limit }} ]; do
+            sleep 1h
+            rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+            echo "Rate limit remaining: $rl"
+          done
+
+      - name: generate save directory name
+        shell: bash
+        id: vars
+        run: |
+          SREPO=$(echo -n ${{ inputs.repo }} | tr '/' .)
+          echo "SREPO set to ${SREPO}"
+          echo "SREPO=${SREPO}" >> $GITHUB_OUTPUT
+
+      - name: Cache bai docker
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: bai.tar
+          key: bai
+
+      - name: checkout bai repo
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v3
+        with:
+          repository: tklengyel/BinAbsInspector
+          ref: update
+          token: ${{ secrets.GHPAT }}
+
+      - name: Set up Docker Buildx
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build production image
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          tags: bai:latest
+          outputs: type=docker,dest=bai.tar
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Load image
+        run: docker load -i bai.tar
+
+      - name: move bai.tar
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: mv bai.tar /tmp
+
+      - name: checkout SRS
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GHPAT }}
+
+      - name: checkout target repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GHPAT }}
+          path: repo
+
+      - name: run bai
+        timeout-minutes: 300
+        run: |
+          sudo -E ./bai/bai.sh -w $GITHUB_WORKSPACE/repo
+          sudo chown -R $USER.$USER ./repo
+
+      - name: fixup json
+        run: |
+          for log in $(find ./repo -name '*.bai.log'); do
+            exec=$(echo $log | awk -F'.bai.log' '{ print $1 }' | awk -F'/' '{ print $NF }')
+            file=$(find ./repo -name $exec)
+
+            echo "Found bai log at $log, filename: $exec, path: $file"
+
+            cat $log | grep logger | grep CWE | jq -r '.message' | sort -u > bugs
+            while read -r bug; do
+              cwe=$(echo $bug | awk -F': ' '{ print $1 }')
+              bug=$(echo $bug | awk -F': ' '{ print $2 }')
+              addr=$(echo $bug | awk -F'@' '{ print $2 }' | awk '{ print $1 }')
+              addr=$(printf "0x%X" $((0x$addr - 0x100000)))
+              source=$(addr2line --functions --demangle -e $file $addr)
+              func=$(echo $source | awk -F' ' '{ print $1 }')
+              source=$(echo $source | awk -F' ' '{ print $2 }')
+              jq -n --arg executable "${exec}" --arg cwe "${cwe}" --arg bug "${bug}" --arg sourceinfo "${source}" --arg function "${func}" '{"executable": $executable, "cwe": $cwe, "bug": $bug, "sourceinfo": $sourceinfo, "function": $function}' >> tmp.bai.json
+            done < bugs
+            rm bugs
+          done
+
+          cat tmp.bai.json | jq -s > ${{ steps.vars.outputs.SREPO }}.bai.json
+          jq '.' ${{ steps.vars.outputs.SREPO }}.bai.json
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.vars.outputs.SREPO }}.bai
+          path: |
+            ${{ steps.vars.outputs.SREPO }}.bai.json
+
+      - name: move bai.tar back for caching
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: mv /tmp/bai.tar .

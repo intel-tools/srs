@@ -14,6 +14,26 @@ on:
         description: 'Total number of matrices'
         required: true
         type: number
+      scan-build:
+        description: 'Run scan-build workflow'
+        required: false
+        type: number
+        default: 0
+      ossf-scorecard:
+        description: 'Run OSSF scorecard workflow'
+        required: false
+        type: number
+        default: 0
+      metadata:
+        description: 'Run metadata workflow'
+        required: false
+        type: number
+        default: 0
+      bai:
+        description: 'Run BinAbsInspector workflow'
+        required: false
+        type: number
+        default: 0
 jobs:
   matrix:
     runs-on: ubuntu-latest
@@ -45,6 +65,7 @@ jobs:
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   scan-build:
+    if: inputs.scan-build == 1
     needs: matrix
     secrets: inherit
     strategy:
@@ -55,6 +76,7 @@ jobs:
       repo: ${{ matrix.repo }}
 
   ossf-scorecard:
+    if: inputs.ossf-scorecard == 1
     needs: matrix
     secrets: inherit
     strategy:
@@ -65,6 +87,7 @@ jobs:
       repo: ${{ matrix.repo }}
 
   metadata:
+    if: inputs.metadata == 1
     needs: matrix
     secrets: inherit
     strategy:
@@ -74,8 +97,19 @@ jobs:
     with:
       repo: ${{ matrix.repo }}
 
+  bai:
+    if: inputs.bai == 1
+    needs: matrix
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/bai.yml
+    with:
+      repo: ${{ matrix.repo }}
+
   next:
-    needs: [scan-build, ossf-scorecard, metadata]
+    needs: [scan-build, ossf-scorecard, metadata, bai]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:

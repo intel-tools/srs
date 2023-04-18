@@ -6,56 +6,39 @@ on:
         description: 'The search terms to query'
         required: true
         type: string
+        default: 'archived:false language:c language:c++'
       minstars:
         description: 'Minimum stars the repository should have to be included in query'
         required: false
-        type: string
+        number: string
+        default: 400
       maxstars:
         description: 'Maximum stars to break query up to'
         required: false
-        type: string
+        typer: number
+        default: 4000
       increment:
         description: 'Increment to break query up to in terms of stars'
         required: false
-        type: string
+        type: number
+        default: 50
       abovemax:
         description: 'Include repositories above the max number of stars in a single query'
         required: false
         type: string
+        default: 'true'
+      workflows:
+        description: 'List of workflows to enable (CSV)'
+        required: false
+        type: string
+        default: 'scan-build,ossf-scorecard,metadata,bai'
+
 jobs:
   query-repositories:
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GHPAT }}
-      DEFAULT: "archived:false language:c language:c++"
-      MINSTARS: 1000 # below this will be skipped
-      MAXSTARS: 4000 # stop when reached
-      ABOVEMAX: 1 # include results above MAXSTARS in a single query, needs to be <=1000 results
-      INCREMENT: 200 # size to group search loop into for range between MINSTARS..MAXSTARS-1
     steps:
-      - name: set search terms from repo dispatch
-        id: set
-        run: |
-          search="${{ inputs.search }}"
-          [[ -z $search ]] && search="$DEFAULT"
-          echo search="$search" >> $GITHUB_OUTPUT
-
-          minstars="${{ inputs.minstars }}"
-          [[ -z $minstars ]] && minstars="$MINSTARS"
-          echo minstars="$minstars" >> $GITHUB_OUTPUT
-
-          maxstars="${{ inputs.maxstars }}"
-          [[ -z $maxstars ]] && maxstars="$MAXSTARS"
-          echo maxstars="$maxstars" >> $GITHUB_OUTPUT
-
-          increment="${{ inputs.increment }}"
-          [[ -z $increment ]] && increment="$INCREMENT"
-          echo increment="$increment" >> $GITHUB_OUTPUT
-
-          abovemax="${{ inputs.abovemax }}"
-          [[ -z $abovemax ]] && abovemax="$ABOVEMAX"
-          echo abovemax="$abovemax" >> $GITHUB_OUTPUT
-
       - name: checkout repo
         uses: actions/checkout@v3
         with:
@@ -63,11 +46,11 @@ jobs:
 
       - name: execute search
         env:
-          SEARCH: ${{ steps.set.outputs.search }}
-          MINSTARS: ${{ steps.set.outputs.minstars }}
-          MAXSTARS: ${{ steps.set.outputs.maxstars }}
-          INCREMENT: ${{ steps.set.outputs.increment }}
-          ABOVEMAX: ${{ steps.set.outputs.abovemax }}
+          SEARCH: ${{ inputs.search }}
+          MINSTARS: ${{ inputs.minstars }}
+          MAXSTARS: ${{ inputs.maxstars }}
+          INCREMENT: ${{ inputs.increment }}
+          ABOVEMAX: ${{ inputs.abovemax }}
         run: |
           ./query/query.sh "${SEARCH}" $MINSTARS $MAXSTARS $INCREMENT $ABOVEMAX
 
@@ -142,4 +125,10 @@ jobs:
             query-summary.md
 
       - name: start scans
-        run: gh workflow run srs.yml -f run-ids='${{ github.run_id }}' -f number-of-matrices=${{ steps.matrix.outputs.number-of-matrices }} -f matrix=1
+        run: |
+          workflows=""
+          for w in $(echo '${{ inputs.workflows }}' | tr "," " "); do
+            workflows="$workflows -f $w=1"
+          done
+
+          gh workflow run srs.yml -f run-ids='${{ github.run_id }}' -f number-of-matrices=${{ steps.matrix.outputs.number-of-matrices }} -f matrix=1 $workflows
