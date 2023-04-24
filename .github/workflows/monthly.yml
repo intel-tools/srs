@@ -13,4 +13,4 @@ jobs:
       - name: checkout repo
         uses: actions/checkout@v3
 
-      - run: gh workflow run query.yml -f search="archived:false language:c language:c++" -f minstars="600" -f increment="100"
+      - run: gh workflow run query.yml -f search="archived:false language:c language:c++" -f minstars="400" -f increment="50"
