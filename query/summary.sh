@@ -37,19 +37,25 @@ create_table() {
 
           echo "### Breakdown" >> summary.md
 
-          echo "| #    | Repo        | Bugs       | OSSF score | High cognitive complexity functions / Total functions   |" >> summary.md
-          echo "| ---- | ----------- | ---------- | ---------- | ------------------------------------------------------- |" >> summary.md
+          echo "| #   | Repo        | Scan-build Bugs | OSSF score | BAI Bugs  | High cognitive complexity functions / Total functions   | Comments / LoC |" >> summary.md
+          echo "| --- | ----------- | --------------- | ---------- | --------- | ------------------------------------------------------- | -------------- |" >> summary.md
 
           rm *.tmp || :
 
-          for f in $(find $ARTIFACT_DIR -type f -name '*.scan-build.json'); do
-            repo=$(jq -r '.repo' $f)
+          for f in $(find $ARTIFACT_DIR -type f -name '*.metadata.json'); do
+            repo=$(jq -r '.full_name' $f)
             srepo=$(echo $repo | tr '/' .)
 
-            functions=$(jq '.functions' $f)
-            complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $f | wc -l)
-            bugs=$(jq '.bugs | length' $f)
-            bugs=$(( bugs - complex_functions ))
+            if [ ! -f $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json ]; then
+                functions="-1"
+                complex_functions="-1"
+                bugs="-1"
+            else
+                functions=$(jq '.functions' $f)
+                complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json | wc -l)
+                bugs=$(jq '.bugs | length' $f)
+                bugs=$(( bugs - complex_functions ))
+            fi
 
             if [ ! -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
                 score="-1"
@@ -57,20 +63,32 @@ create_table() {
                 score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
             fi
 
-            if [ ${score} != "-1" ] && [ $functions -gt 0 ]; then
-              echo "$repo $bugs $score $functions $complex_functions" >> s.tmp
+            if [ ! -f $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json ]; then
+                bai="-1"
             else
-              echo "Repo $repo had a failed OSSF scorecard or clang-tidy scan ($score, $functions)"
+                bai=$(jq '. | length' $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json)
+            fi
+
+            if [ ! -f $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json ]; then
+                lines="-1"
+                comments="-1"
+            else
+                lines=$(jq -r '[."C".code, ."C++".code, ."C/C++ Header".code ] | add' $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json)
+                comments=$(jq -r '[."C".comment, ."C++".comment, ."C/C++ Header".comment ] | add' $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json)
+            fi
+
+            if [ $lines -gt 0 ]; then
+              echo "$repo $bugs $score $bai $functions $complex_functions $comments $lines" >> s.tmp
             fi
           done
 
           sort -k 2 -n -r s.tmp > s2.tmp
 
-          echo "repo, bugs, ossf score, complex functions, total functions" > score_vs_bugs.csv
+          echo "repo, scan-build-bugs, ossf-score, bai-bugs, complex-functions, total-functions, lines-of-code, lines-of-comments" > summary.csv
           count=1
-          while read -r repo bugs score functions complex_functions; do
-            echo "| $count | [$repo](https://github.com/$repo) | $bugs | $score | $complex_functions / $functions |" >> summary.md
-            echo "$repo,$bugs,$score,$complex_functions,$functions" >> score_vs_bugs.csv
+          while read -r repo bugs score bai functions complex_functions comments lines; do
+            echo "| $count | [$repo](https://github.com/$repo) | $bugs | $score | $bai | $complex_functions / $functions | $comments / $lines |" >> summary.md
+            echo "$repo,$bugs,$score,$bai,$complex_functions,$functions,$comments,$lines" >> summary.csv
             (( count++ ))
           done < s2.tmp
 

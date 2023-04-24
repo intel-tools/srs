@@ -72,7 +72,7 @@ jobs:
 
           cp ${{ steps.vars.outputs.firstid }}/query-repositories/filtered-repos.json scans/$d
           cp all-results.tar.gz scans/$d
-          cp score_vs_bugs.csv scans/$d
+          cp summary.csv scans/$d
 
           echo "---" > scans/$d/index.md
           echo "layout: default" >> scans/$d/index.md
@@ -80,7 +80,7 @@ jobs:
           echo "" >> scans/$d/index.md
 
           echo "## Scan date: $cd" >> scans/$d/index.md
-          echo "[All results (tar.gz)](./all-results.tar.gz) [Repo list (JSON)](./filtered-repos.json) [Score vs Bugs (CSV)](./score_vs_bugs.csv)" >> scans/$d/index.md
+          echo "[All results (tar.gz)](./all-results.tar.gz) [Repo list (JSON)](./filtered-repos.json) [Summary (CSV)](./summary.csv)" >> scans/$d/index.md
 
           echo "" >> scans/$d/index.md
           echo "***" >> scans/$d/index.md
