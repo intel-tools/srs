@@ -59,7 +59,7 @@ download_workflow_id() {
             rm $DEST/$name.zip
 
             if [ -f $DEST/$name/$name.tar.gz ]; then
-                tar -xvf $DEST/$name/$name.tar.gz -C $DEST/$name --wildcards --no-anchored '*.scan-build.json'
+                tar -xvf $DEST/$name/$name.tar.gz -C $DEST/$name --wildcards --no-anchored --strip-components 1 '*.scan-build.json'
                 rm $DEST/$name/$name.tar.gz
             fi
         done
