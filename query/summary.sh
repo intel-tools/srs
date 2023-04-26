@@ -11,6 +11,7 @@ create_table() {
           complex_functions=$(find $ARTIFACT_DIR -type f -name '*.scan-build.json' -exec jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' {} + | wc -l | awk '{ sum += $1 } END { print sum }')
           bugs=$(( bugs - complex_functions ))
 
+          # Save stats for website summary
           echo "$built, $scored, $bugs, $complex_functions" > stats
 
           echo "### Repositories built with scan-build: ${built}" >> summary.md
@@ -46,40 +47,34 @@ create_table() {
             repo=$(jq -r '.full_name' $f)
             srepo=$(echo $repo | tr '/' .)
 
-            if [ ! -f $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json ]; then
-                functions="-1"
-                complex_functions="-1"
-                bugs="-1"
-            else
-                functions=$(jq '.functions' $f)
+            functions="-1"
+            complex_functions="-1"
+            bugs="-1"
+            if [ -f $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json ]; then
+                functions=$(jq '.functions' $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json)
                 complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json | wc -l)
-                bugs=$(jq '.bugs | length' $f)
+                bugs=$(jq '.bugs | length' $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json)
                 bugs=$(( bugs - complex_functions ))
             fi
 
-            if [ ! -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
-                score="-1"
-            else
+            score="-1"
+            if [ -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
                 score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
             fi
 
-            if [ ! -f $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json ]; then
-                bai="-1"
-            else
+            bai="-1"
+            if [ -f $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json ]; then
                 bai=$(jq '. | length' $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json)
             fi
 
-            if [ ! -f $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json ]; then
-                lines="-1"
-                comments="-1"
-            else
+            lines="-1"
+            comments="-1"
+            if [ -f $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json ]; then
                 lines=$(jq -r '[."C".code, ."C++".code, ."C/C++ Header".code ] | add' $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json)
                 comments=$(jq -r '[."C".comment, ."C++".comment, ."C/C++ Header".comment ] | add' $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json)
             fi
 
-            if [ $lines -gt 0 ]; then
-              echo "$repo $bugs $score $bai $functions $complex_functions $comments $lines" >> s.tmp
-            fi
+            echo "$repo $bugs $score $bai $functions $complex_functions $comments $lines" >> s.tmp
           done
 
           sort -k 2 -n -r s.tmp > s2.tmp
