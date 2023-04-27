@@ -1,0 +1,121 @@
+name: Run Infer
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        default: ''
+        type: string
+      version:
+        description: 'version'
+        required: false
+        default: '1.1.0'
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
+
+  workflow_call:
+    inputs:
+      repo:
+        description: 'repo'
+        required: true
+        default: ''
+        type: string
+      version:
+        description: 'version'
+        required: false
+        default: '1.1.0'
+        type: string
+      rate-limit:
+        description: 'rate limit'
+        required: false
+        default: 150
+        type: number
+    secrets:
+      GHPAT:
+        required: true
+
+jobs:
+  infer:
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version }}
+
+    steps:
+      - name: rate limit
+        env:
+          GHPAT: ${{ secrets.GHPAT }}
+        run: |
+          rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+          echo "Rate limit remaining: $rl"
+          while [ $rl -lt ${{ inputs.rate-limit }} ]; do
+            sleep 1h
+            rl=$(curl -H "Authorization: token $GHPAT" -X GET https://api.github.com/rate_limit | jq '.rate.remaining')
+            echo "Rate limit remaining: $rl"
+          done
+
+      - name: generate save directory name
+        shell: bash
+        id: vars
+        run: |
+          SREPO=$(echo -n ${{ inputs.repo }} | tr '/' .)
+          echo "SREPO set to ${SREPO}"
+          echo "SREPO=${SREPO}" >> $GITHUB_OUTPUT
+
+      - name: Cache infer
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: infer.tar.xz
+          key: infer
+
+      - name: process cached infer
+        if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          sudo tar -C /opt -xvf infer.tar.xz
+          sudo ln -s /opt/infer-linux64-v$VERSION/bin/infer /usr/local/bin
+          mv infer.tar.xz /tmp
+
+      - name: download infer
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL "https://github.com/facebook/infer/releases/download/v$VERSION/infer-linux64-v$VERSION.tar.xz" > infer.tar.xz
+          sudo tar -C /opt -xvf infer.tar.xz
+          sudo ln -s /opt/infer-linux64-v$VERSION/bin/infer /usr/local/bin
+          mv infer.tar.xz /tmp
+
+      - name: checkout SRS
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GHPAT }}
+
+      - name: checkout target repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.repo }}
+          token: ${{ secrets.GHPAT }}
+          path: repo
+
+      - name: run infer
+        run: |
+          sudo -E ./infer/infer.sh -w $GITHUB_WORKSPACE/repo
+          sudo chown -R $USER.$USER $GITHUB_WORKSPACE/repo
+
+      - name: combine results
+        run: |
+          find $GITHUB_WORKSPACE/repo -type f -name 'report.json' -exec jq -cn '{ bugs: [ inputs ] | add }' {} + > ${{ steps.vars.outputs.SREPO }}.infer.json
+
+      - name: save results
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.vars.outputs.SREPO }}.infer
+          path: |
+            ${{ steps.vars.outputs.SREPO }}.infer.json
+
+      - name: move infer back for caching
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: mv /tmp/infer.tar.xz .

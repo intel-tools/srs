@@ -34,6 +34,11 @@ on:
         required: false
         type: number
         default: 0
+      infer:
+        description: 'Run Infer workflow'
+        required: false
+        type: number
+        default: 0
 jobs:
   matrix:
     runs-on: ubuntu-latest
@@ -108,8 +113,19 @@ jobs:
     with:
       repo: ${{ matrix.repo }}
 
+  infer:
+    if: inputs.infer == 1
+    needs: matrix
+    secrets: inherit
+    strategy:
+      matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
+      fail-fast: false # don't stop other jobs if one fails
+    uses: ./.github/workflows/infer.yml
+    with:
+      repo: ${{ matrix.repo }}
+
   next:
-    needs: [scan-build, ossf-scorecard, metadata, bai]
+    needs: [scan-build, ossf-scorecard, metadata, bai, infer]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
