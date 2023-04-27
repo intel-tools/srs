@@ -113,7 +113,7 @@ jobs:
         run: |
           for log in $(find ./repo -name '*.bai.log'); do
             exec=$(echo $log | awk -F'.bai.log' '{ print $1 }' | awk -F'/' '{ print $NF }')
-            file=$(find ./repo -name $exec)
+            file=$(find ./repo/install -name $exec)
 
             echo "Found bai log at $log, filename: $exec, path: $file"
 

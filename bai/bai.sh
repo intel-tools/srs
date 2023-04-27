@@ -175,10 +175,11 @@ build_autoconf() {
                 ;;
             esac
 
-            echo $dir >> ${OUTPUT}/configure.log
+            echo $dir >> ${WORKDIR}/configure.log
 
-            ./configure | tee -a ${OUTPUT}/configure.log 2>&1 || continue
-            make | tee -a ${OUTPUT}/make.log 2>&1 || continue
+            ./configure | tee -a ${WORKDIR}/configure.log 2>&1 || continue
+            make | tee -a ${WORKDIR}/make.log 2>&1 || continue
+            make DESTDIR=$WORKDIR/install install | tee -a ${WORKDIR}/make.log 2>&1 || continue
 
             touch "build-done"
 
@@ -206,8 +207,9 @@ build_cmake() {
 
             echo $dir >> $WORKDIR/cmake.log
 
-            cmake $dir | tee -a ${OUTPUT}/cmake.log 2>&1 || continue
-            make | tee -a ${OUTPUT}/make.log 2>&1 || continue
+            cmake $dir | tee -a ${WORKDIR}/cmake.log 2>&1 || continue
+            make | tee -a ${WORKDIR}/make.log 2>&1 || continue
+            make DESTDIR=$WORKDIR/install install | tee -a ${WORKDIR}/make.log 2>&1 || continue
 
             touch $dir/build-done
 
@@ -228,11 +230,12 @@ build_meson() {
               continue;
             fi
 
-            echo $dir >> ${OUTPUT}/meson-setup.log
+            echo $dir >> ${WORKDIR}/meson-setup.log
 
             meson setup builddir --buildtype debug 2>&1 | tee -a $WORKDIR/meson-setup.log || continue
 
             ninja -C builddir | tee -a $WORKDIR/ninja.log || continue
+            DESTDIR=$WORKDIR/install ninja -C builddir install | tee -a $WORKDIR/ninja.log || continue
 
             touch $dir/build-done
 
@@ -247,7 +250,7 @@ build() {
 }
 
 run_bai() {
-    cd $WORKDIR
+    cd $WORKDIR/install
 
     local files=$(find . -type f -executable)
     for f in $files; do
@@ -259,7 +262,7 @@ run_bai() {
 
         if [ 1 -eq $(file -b $f | grep "executable" | wc -l) ]; then
             echo "Running BinAbsInspector on executable $f"
-            docker run -v $WORKDIR:/data/workspace/ bai "@@<-placeholder -all -timeout $TIMEOUT -Z3Timeout 30000 -json -placeholder>" -import $f 2>/dev/null | tee -a $WORKDIR/$filename.bai.log
+            docker run -v $PWD:/data/workspace/ bai "@@<-placeholder -all -timeout $TIMEOUT -Z3Timeout 30000 -json -placeholder>" -import $f 2>&1 | tee -a $WORKDIR/$filename.bai.log
         fi
 
         if [ 1 -eq $(file -b $f | grep "shared object" | wc -l) ]; then
@@ -274,7 +277,7 @@ run_bai() {
                 [[ -z $addr ]] && continue
 
                 echo "Setting entry point to $addr and running BinAbsInspector on $f:$name()"
-                docker run -v $WORKDIR:/data/workspace/ bai "@@<-placeholder -all -timeout $TIMEOUT -Z3Timeout 30000 -entry $addr -json -placeholder>" -import $f 2>/dev/null | tee -a $WORKDIR/$filename.bai.log
+                docker run -v $PWD:/data/workspace/ bai "@@<-placeholder -all -timeout $TIMEOUT -Z3Timeout 30000 -entry $addr -json -placeholder>" -import $f 2>&1 | tee -a $WORKDIR/$filename.bai.log
             done < functions
         fi
     done
