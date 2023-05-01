@@ -8,8 +8,9 @@ Current scans being performed:
  - [OSSF Scorecard](https://github.com/ossf/scorecard): Measure software development practices.
  - [CLoC](https://github.com/AlDanial/cloc): Calculate lines of code & comments.
  - [BinAbsInspector](https://github.com/tklengyel/BinAbsInspector): Detect common C & C++ bugs using static binary analysis with Ghidra & Z3.
+ - [Infer](https://fbinfer.com): Infer checks for null pointer dereferences, memory leaks, coding conventions and unavailable API’s in C & C++ code.
 
-Scans run weekly and results are automatically published at [https://intel.github.io/srs](https://intel.github.io/srs)
+Scans run monthly and results are automatically published at [https://intel.github.io/srs](https://intel.github.io/srs)
 
 # License
 
@@ -33,39 +34,61 @@ on:
         default: ''
         type: string
       rate-limit:
-        description: 'rate limit'
+        description: 'rate limit GitHub API requests'
         required: false
         default: 150
         type: number
-    secrets:
-      GHPAT:
-        required: true
 ```
 
-For steps you can define whatever is needed to perform the scan as you would with a workflow. Use [Upload-Artifact Action](https://github.com/actions/upload-artifact) to store the results of the scan with a key that uniquely identifies the repo and the scan, for example `some-repo.my-new-scan.results.zip`).
+For steps you can define whatever is needed to perform the scan as you would with a workflow. Use [Upload-Artifact Action](https://github.com/actions/upload-artifact) to store the results of the scan with a key that uniquely identifies the repo and the scan, for example `some-repo.my-new-scan.results.zip`). It is advisable to check the GitHub API rate limit and sleep if there are fewer then 150 calls remaining for your token.
 
 2. Add call to the new workflow in `.github/workflows/srs.yml`:
 
 ```yaml
-  my-new-scan:
-    needs: matrix
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/my-new-scan.yml
-    with:
-      repo: ${{ matrix.repo }}
+on:
+  workflow_dispatch:
+    inputs:
+      ...
+      my-new-scan:
+        description: 'Run my-new-scan workflow'
+        required: false
+        type: number
+        default: 0
+  ...
+  jobs:
+    ...   
+    my-new-scan:
+      if: inputs.my-new-scan == 1
+      needs: matrix
+      secrets: inherit
+      strategy:
+        matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
+        fail-fast: false # don't stop other jobs if one fails
+      uses: ./.github/workflows/my-new-scan.yml
+      with:
+        repo: ${{ matrix.repo }}
 ```
 
 3. Add the new scan to the `next` job's `needs` list:
 
 ```yaml
 next:
-    needs: [scan-build, ossf-scorecard, metadata, my-new-scan]
+    needs: [..., my-new-scan]
 ```
 
-4. Add the scan's result file (for example `my-new-scan.results.zip`) to the `aggregate` function in `query/summary.sh`.
+4. Add my-new-scan to the enabled workflows in `query.yml`:
+
+```yaml
+      ...
+      workflows:
+        description: 'List of workflows to enable (CSV)'
+        required: false
+        type: string
+        default: '...,my-new-scan'
+      ...
+```
+
+5. Add the scan's result file (for example `my-new-scan.results.zip`) to the `aggregate` function in `query/summary.sh`.
 
 ```bash
     for f in $(find $ARTIFACT_DIR -type f -name '*.my-new-scan.results.zip'); do
