@@ -20,7 +20,7 @@ rate_limit() {
     rl=$(gh api -H "Accept: application/vnd.github+json" /rate_limit | jq '.rate.remaining')
     echo "Rate limit remaining: $rl"
     while [ $rl -lt 150 ]; do
-        sleep 1h
+        sleep 1m
         rl=$(gh api -H "Accept: application/vnd.github+json" /rate_limit | jq '.rate.remaining')
         echo "Rate limit remaining: $rl"
     done

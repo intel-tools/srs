@@ -11,7 +11,15 @@ on:
         required: false
         type: string
 jobs:
+  delay:
+    runs-on: ubuntu-latest
+    steps:
+      - name: delay
+        if: inputs.delay != ''
+        run: sleep ${{ inputs.delay }}
+
   summary:
+    needs: delay
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GHPAT }}
@@ -28,10 +36,6 @@ jobs:
         run: |
           firstid=$(echo "${{ inputs.run-ids }}" | awk -F',' '{ print $1 }')
           echo "firstid=$firstid" >> $GITHUB_OUTPUT
-
-      - name: delay
-        if: inputs.delay != ''
-        run: sleep ${{ inputs.delay }}
 
       - name: Download artifacts with rate limit
         run: ./query/download-artifacts.sh "${{ inputs.run-ids }}"
