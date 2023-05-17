@@ -79,7 +79,7 @@ create_table() {
                 infer=$(jq -r '.bugs | length' $ARTIFACT_DIR/$srepo.infer/$srepo.infer.json)
             fi
 
-            echo "$repo $bugs $bai $infer $score $functions $complex_functions $comments $lines $infer" >> s.tmp
+            echo "$repo $bugs $bai $infer $score $functions $complex_functions $comments $lines" >> s.tmp
           done
 
           sort -k 2 -n -r s.tmp > s2.tmp
