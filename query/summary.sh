@@ -47,37 +47,45 @@ create_table() {
             repo=$(jq -r '.full_name' $f)
             srepo=$(echo $repo | tr '/' .)
 
-            functions="-1"
-            complex_functions="-1"
-            bugs="-1"
+            unset bugs
+            unset functions
+            unset complex_functions
             if [ -f $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json ]; then
                 functions=$(jq '.functions' $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json)
                 complex_functions=$(jq '.bugs[] | select( any(.; .type == "Cognitive complexity") ) | length' $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json | wc -l)
                 bugs=$(jq '.bugs | length' $ARTIFACT_DIR/$srepo.scan-build/$srepo.scan-build.json)
                 bugs=$(( bugs - complex_functions ))
             fi
+            [[ -z $functions ]] && functions="-1"
+            [[ -z $complex_functions ]] && complex_functions="-1"
+            [[ -z $bugs ]] && bugs="-1"
 
-            score="-1"
+            unset score
             if [ -f $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json ]; then
                 score=$(jq '.score' $ARTIFACT_DIR/$srepo.ossf-scorecard/$srepo.ossf-scorecard.json)
             fi
+            [[ -z $score ]] && score="-1"
 
-            bai="-1"
+            unset bai
             if [ -f $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json ]; then
                 bai=$(jq '. | length' $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json)
             fi
+            [[ -z $bai ]] && bai="-1"
 
-            lines="-1"
-            comments="-1"
+            unset lines
+            unset comments
             if [ -f $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json ]; then
                 lines=$(jq -r '[."C".code, ."C++".code, ."C/C++ Header".code ] | add' $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json)
                 comments=$(jq -r '[."C".comment, ."C++".comment, ."C/C++ Header".comment ] | add' $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json)
             fi
+            [[ -z $lines ]] && lines="-1"
+            [[ -z $comments ]] && comments="-1"
 
-            infer="-1"
+            unset infer
             if [ -f $ARTIFACT_DIR/$srepo.infer/$srepo.infer.json ]; then
                 infer=$(jq -r '.bugs | length' $ARTIFACT_DIR/$srepo.infer/$srepo.infer.json)
             fi
+            [[ -z $infer ]] && infer="-1"
 
             echo "$repo $bugs $bai $infer $score $functions $complex_functions $comments $lines" >> s.tmp
           done
