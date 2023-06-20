@@ -204,7 +204,7 @@ build_cmake() {
 
             echo $dir >> $WORKDIR/cmake.log
 
-            cmake DCMAKE_EXPORT_COMPILE_COMMANDS=YES $dir | tee -a ${WORKDIR}/cmake.log 2>&1 || continue
+            cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=YES $dir | tee -a ${WORKDIR}/cmake.log 2>&1 || continue
             cd ..
             infer capture --compilation-database build/compile_commands.json | tee -a ${WORKDIR}/infer.log 2>&1
             infer analyze --bufferoverrun --no-liveness | tee -a ${WORKDIR}/infer.log 2>&1
