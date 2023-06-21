@@ -107,10 +107,12 @@ jobs:
           sudo chown -R $USER.$USER $GITHUB_WORKSPACE/repo
 
       - name: combine results
+        if: ${{ always() }}
         run: |
           find $GITHUB_WORKSPACE/repo -type f -name 'report.json' -exec jq -cn '{ bugs: [ inputs ] | add }' {} + > ${{ steps.vars.outputs.SREPO }}.infer.json
 
       - name: save results
+        if: ${{ always() }}
         uses: actions/upload-artifact@v3
         with:
           name: ${{ steps.vars.outputs.SREPO }}.infer
@@ -118,5 +120,5 @@ jobs:
             ${{ steps.vars.outputs.SREPO }}.infer.json
 
       - name: move infer back for caching
-        if: steps.cache.outputs.cache-hit != 'true'
+        if: ${{ always() }}
         run: mv /tmp/infer.tar.xz .
