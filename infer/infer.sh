@@ -176,7 +176,9 @@ build_autoconf() {
 
             ./configure | tee -a ${WORKDIR}/configure.log 2>&1 || continue
             infer capture -- make | tee -a ${WORKDIR}/infer.log 2>&1 || continue
-            infer analyze --bufferoverrun --no-liveness | tee -a ${WORKDIR}/infer.log 2>&1
+
+            timeout -s 2 ${TIMEOUT} \
+                infer analyze --bufferoverrun --no-liveness | tee -a ${WORKDIR}/infer.log 2>&1
 
             touch "build-done"
 
@@ -207,7 +209,9 @@ build_cmake() {
             cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=YES $dir | tee -a ${WORKDIR}/cmake.log 2>&1 || continue
             cd ..
             infer capture --compilation-database build/compile_commands.json | tee -a ${WORKDIR}/infer.log 2>&1
-            infer analyze --bufferoverrun --no-liveness | tee -a ${WORKDIR}/infer.log 2>&1
+
+            timeout -s 2 ${TIMEOUT} \
+                infer analyze --bufferoverrun --no-liveness | tee -a ${WORKDIR}/infer.log 2>&1
 
             touch $dir/build-done
 
@@ -232,7 +236,9 @@ build_meson() {
 
             meson setup build --buildtype debug 2>&1 | tee -a $WORKDIR/meson-setup.log || continue
             infer capture --compilation-database build/compile_commands.json | tee -a ${WORKDIR}/infer.log 2>&1
-            infer analyze --bufferoverrun --no-liveness | tee -a ${WORKDIR}/infer.log 2>&1
+
+            timeout -s 2 ${TIMEOUT} \
+                infer analyze --bufferoverrun --no-liveness | tee -a ${WORKDIR}/infer.log 2>&1
 
             touch $dir/build-done
 
