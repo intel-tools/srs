@@ -101,6 +101,7 @@ jobs:
           path: repo
 
       - name: run infer
+        timeout-minutes: 300
         run: |
           sudo -E ./infer/infer.sh -w $GITHUB_WORKSPACE/repo
           sudo chown -R $USER.$USER $GITHUB_WORKSPACE/repo
