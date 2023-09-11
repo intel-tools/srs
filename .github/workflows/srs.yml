@@ -47,18 +47,15 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - name: get first run id
-        id: cachekey
-        run: |
-          cachekey=$(echo '${{ inputs.run-ids }}' | awk -F',' '{ print $1 }')
-          echo "cachekey=$cachekey" >> $GITHUB_OUTPUT
-
-      - name: Get matrices
-        uses: actions/cache@v3
-        id: cache
+      - name: checkout repo
+        uses: actions/checkout@v3
         with:
-          path: matrix*.json
-          key: matrix-${{ steps.cachekey.outputs.cachekey }}
+          token: ${{ secrets.GHPAT }}
+
+      - name: get first run id
+        run: |
+          runid=$(echo '${{ inputs.run-ids }}' | awk -F',' '{ print $1 }')
+          gh run download $runid -n matrix
 
       - name: get matrix
         id: matrix

@@ -109,12 +109,6 @@ jobs:
 
          echo "$MATRIXID: $JSON"
 
-      - name: Cache matrices
-        uses: actions/cache@v3
-        with:
-          path: matrix*.json
-          key: matrix-${{ github.run_id }}
-
       - name: save results
         uses: actions/upload-artifact@v3
         with:
@@ -123,6 +117,14 @@ jobs:
             repos.json
             filtered-repos.json
             query-summary.md
+            matrix*.json
+
+      - name: save matrices
+        uses: actions/upload-artifact@v3
+        with:
+          name: matrix
+          path: |
+            matrix*.json
 
       - name: start scans
         run: |
