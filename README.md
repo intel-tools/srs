@@ -96,4 +96,4 @@ next:
     done
 ```
 
-Results will saved and published on GitHub Pages as part of the next scan.
+Results will be saved and published on GitHub Pages as part of the next scan.
