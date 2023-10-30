@@ -7,7 +7,6 @@ Current scans being performed:
  - [clang-tidy cognitive complexity](https://clang.llvm.org/extra/clang-tidy/checks/readability/function-cognitive-complexity.html): Calculate readability score for every function. [More details on how to integrate this scan into your CI using GitHub Actions](scan-build).
  - [OSSF Scorecard](https://github.com/ossf/scorecard): Measure software development practices.
  - [CLoC](https://github.com/AlDanial/cloc): Calculate lines of code & comments.
- - [BinAbsInspector](https://github.com/tklengyel/BinAbsInspector): Detect common C & C++ bugs using static binary analysis with Ghidra & Z3.
  - [Infer](https://fbinfer.com): Infer checks for null pointer dereferences, memory leaks, coding conventions and unavailable API’s in C & C++ code.
 
 Scans run monthly and results are automatically published at [https://intel.github.io/srs](https://intel.github.io/srs)

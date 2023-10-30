@@ -29,11 +29,6 @@ on:
         required: false
         type: number
         default: 0
-      bai:
-        description: 'Run BinAbsInspector workflow'
-        required: false
-        type: number
-        default: 0
       infer:
         description: 'Run Infer workflow'
         required: false
@@ -99,17 +94,6 @@ jobs:
     with:
       repo: ${{ matrix.repo }}
 
-  bai:
-    if: inputs.bai == 1
-    needs: matrix
-    secrets: inherit
-    strategy:
-      matrix: ${{fromJson(needs.matrix.outputs.matrix)}}
-      fail-fast: false # don't stop other jobs if one fails
-    uses: ./.github/workflows/bai.yml
-    with:
-      repo: ${{ matrix.repo }}
-
   infer:
     if: inputs.infer == 1
     needs: matrix
@@ -122,7 +106,7 @@ jobs:
       repo: ${{ matrix.repo }}
 
   next:
-    needs: [scan-build, ossf-scorecard, metadata, bai, infer]
+    needs: [scan-build, ossf-scorecard, metadata, infer]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     env:
@@ -143,7 +127,6 @@ jobs:
                 -f scan-build=${{ inputs.scan-build }} \
                 -f ossf-scorecard=${{ inputs.ossf-scorecard }} \
                 -f metadata=${{ inputs.metadata }} \
-                -f bai=${{ inputs.bai }} \
                 -f infer=${{ inputs.infer }} \
                 || retry=1
             else

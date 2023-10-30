@@ -31,7 +31,7 @@ on:
         description: 'List of workflows to enable (CSV)'
         required: false
         type: string
-        default: 'scan-build,ossf-scorecard,metadata,bai,infer'
+        default: 'scan-build,ossf-scorecard,metadata,infer'
 
 jobs:
   query-repositories:

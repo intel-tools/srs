@@ -38,8 +38,8 @@ create_table() {
 
           echo "### Breakdown" >> summary.md
 
-          echo "| #   | Repo        | Scan-build Bugs | BAI Bugs | Infer Bugs | OSSF Score | High cognitive complexity functions / Total functions   | Comments / LoC |" >> summary.md
-          echo "| --- | ----------- | --------------- | -------- | ---------- | ---------- | ------------------------------------------------------- | -------------- |" >> summary.md
+          echo "| #   | Repo        | Scan-build Bugs | Infer Bugs | OSSF Score | High cognitive complexity functions / Total functions   | Comments / LoC |" >> summary.md
+          echo "| --- | ----------- | --------------- | ---------- | ---------- | ------------------------------------------------------- | -------------- |" >> summary.md
 
           rm *.tmp || :
 
@@ -66,12 +66,6 @@ create_table() {
             fi
             [[ -z $score ]] && score="-1"
 
-            unset bai
-            if [ -f $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json ]; then
-                bai=$(jq '. | length' $ARTIFACT_DIR/$srepo.bai/$srepo.bai.json)
-            fi
-            [[ -z $bai ]] && bai="-1"
-
             unset lines
             unset comments
             if [ -f $ARTIFACT_DIR/$srepo.metadata/$srepo.cloc.json ]; then
@@ -87,16 +81,16 @@ create_table() {
             fi
             [[ -z $infer ]] && infer="-1"
 
-            echo "$repo $bugs $bai $infer $score $functions $complex_functions $comments $lines" >> s.tmp
+            echo "$repo $bugs $infer $score $functions $complex_functions $comments $lines" >> s.tmp
           done
 
           sort -k 2 -n -r s.tmp > s2.tmp
 
-          echo "repo, scan-build-bugs, bai-bugs, infer-bugs, ossf-score, complex-functions, total-functions, lines-of-code, lines-of-comments" > summary.csv
+          echo "repo, scan-build-bugs, infer-bugs, ossf-score, complex-functions, total-functions, lines-of-code, lines-of-comments" > summary.csv
           count=1
-          while read -r repo bugs bai infer score functions complex_functions comments lines; do
-            echo "| $count | [$repo](https://github.com/$repo) | $bugs | $bai | $infer | $score | $complex_functions / $functions | $comments / $lines |" >> summary.md
-            echo "$repo,$bugs,$bai,$infer,$score,$complex_functions,$functions,$comments,$lines" >> summary.csv
+          while read -r repo bugs infer score functions complex_functions comments lines; do
+            echo "| $count | [$repo](https://github.com/$repo) | $bugs | $infer | $score | $complex_functions / $functions | $comments / $lines |" >> summary.md
+            echo "$repo,$bugs,$infer,$score,$complex_functions,$functions,$comments,$lines" >> summary.csv
             (( count++ ))
           done < s2.tmp
 
@@ -118,10 +112,6 @@ aggregate() {
     done
 
     for f in $(find $ARTIFACT_DIR -type f -name '*.cloc.json'); do
-        cp $f $ARTIFACT_DIR/aggregate-results/ || :
-    done
-
-    for f in $(find $ARTIFACT_DIR -type f -name '*.bai.json'); do
         cp $f $ARTIFACT_DIR/aggregate-results/ || :
     done
 
