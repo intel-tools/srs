@@ -28,7 +28,7 @@ create_table() {
           if [ ! -z $RUN_IDS ]; then
             echo -n "GitHub Action Run IDS: " >> summary.md
             for r in $(echo $RUN_IDS | tr ',' ' '); do
-                echo -n "[$r](https://github.com/intel/srs/actions/runs/$r) " >> summary.md
+                echo -n "[$r](https://github.com/$GITHUB_REPOSITORY/actions/runs/$r) " >> summary.md
             done
             echo "" >> summary.md
             echo "" >> summary.md
