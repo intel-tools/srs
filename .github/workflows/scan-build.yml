@@ -61,12 +61,12 @@ jobs:
           echo "SREPO=$srepo" >> $GITHUB_OUTPUT
 
       - name: checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GHPAT }}
 
       - name: checkout target repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repo }}
           token: ${{ secrets.GHPAT }}
@@ -81,11 +81,11 @@ jobs:
 
       - name: Set up Docker Buildx
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build production image
         if: steps.cache.outputs.cache-hit != 'true'
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           context: ./scan-build
           file: ./scan-build/Dockerfile

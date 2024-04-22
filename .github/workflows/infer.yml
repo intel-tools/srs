@@ -68,7 +68,7 @@ jobs:
 
       - name: Cache infer
         id: cache
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: infer.tar.xz
           key: infer
@@ -89,12 +89,12 @@ jobs:
           mv infer.tar.xz /tmp
 
       - name: checkout SRS
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           token: ${{ secrets.GHPAT }}
 
       - name: checkout target repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: ${{ inputs.repo }}
           token: ${{ secrets.GHPAT }}
