@@ -110,7 +110,7 @@ jobs:
 
       - name: save results
         if: ${{ always() }}
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}
           path: ${{ steps.vars.outputs.SREPO }}.${{ github.job }}.tar.gz

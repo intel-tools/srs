@@ -110,7 +110,7 @@ jobs:
          echo "$MATRIXID: $JSON"
 
       - name: save results
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: query-repositories
           path: |
@@ -120,7 +120,7 @@ jobs:
             matrix*.json
 
       - name: save matrices
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: matrix
           path: |
