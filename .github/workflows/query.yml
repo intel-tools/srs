@@ -1,4 +1,5 @@
 name: Query GitHub for list of repositories and start SRS
+permissions: read-all
 on:
   workflow_dispatch:
     inputs:
