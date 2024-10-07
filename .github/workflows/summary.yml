@@ -1,4 +1,5 @@
 name: Aggregate results and create summary
+permissions: read-all
 on:
   workflow_dispatch:
     inputs:
