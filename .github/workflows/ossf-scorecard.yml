@@ -1,4 +1,5 @@
 name: Run OSSF Scorecard
+permissions: read-all
 on:
   workflow_dispatch:
     inputs:
