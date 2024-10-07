@@ -1,4 +1,5 @@
 name: Run clang scan-build and clang-tidy cognitive complexity analysis
+permissions: read-all
 on:
   workflow_dispatch:
     inputs:
