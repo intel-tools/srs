@@ -1,4 +1,5 @@
 name: Collect metadata about repository and lines-of-code
+permissions: read-all
 on:
   workflow_call:
     inputs:
