@@ -1,4 +1,5 @@
 name: Run SRS scans
+permissions: read-all
 on:
   workflow_dispatch:
     inputs:
